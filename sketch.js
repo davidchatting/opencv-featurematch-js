@@ -6,31 +6,45 @@ const identityMatrix = [
 ];
 
 const imageTransforms = [];
+let mediaBoundingBox = null;
 
-function setup() {
-  // Use WEBGL so texture()/vertex(u,v) in drawImageWithHomography works
-  canvas = createCanvas(1600, 800, WEBGL);
-  canvas.drop(onFileDropped);
+let maskSegmentation = null;
 
-  createForegroundSegmenter();
-  
-  // ensure texture UVs use normalized coordinates
-  textureMode(NORMAL);
+/**
+ * Creates the foreground segmenter and waits until it's ready.
+ * Returns a Promise that resolves when the segmenter is ready.
+ */
+async function createForegroundSegmenter() {
+  maskSegmentation = new SelfieSegmentation({
+    locateFile: (file) => {
+      return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@latest/${file}`;
+    }
+  });
+  var options = {
+    selfieMode: true,
+    modelSelection: 0, // general
+    effect: 'mask',
+  };
+  maskSegmentation.setOptions(options);
+
+  // Wait for the WASM to load (simulate "blocking" until ready)
+  await maskSegmentation.initialize();
 }
 
-var maskSegmentation = null;
+// In setup(), use async/await to block until ready
+async function setup() {
+  // Use WEBGL so texture()/vertex(u,v) in drawImageWithHomography works
+  canvas = createCanvas(1600, 800, WEBGL);
+  frameRate(30);
+  canvas.drop(onFileDropped);
 
-function createForegroundSegmenter() {
-  maskSegmentation = new SelfieSegmentation({locateFile: (file) => {
-    return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@latest/${file}`;
-  }});
-  var options = {
-      selfieMode: true,
-      modelSelection: 0,  //general
-      effect: 'mask',
-  };
-  
-  maskSegmentation.setOptions(options);
+  // Block until segmenter is ready
+  await createForegroundSegmenter();
+
+  // ensure texture UVs use normalized coordinates
+  textureMode(NORMAL);
+
+  processAnyAttachedMedia();
 }
 
 function onFileDropped(file) {
@@ -41,28 +55,9 @@ function onFileDropped(file) {
   const originalImg = createImg(file.data, '', () => {
     originalImg.parent(div);
     originalImg.addClass('original');
+    setImageTransform(originalImg.elt, identityMatrix);
 
-    const lowResImg = generateLowResImage(originalImg.elt, () => {
-      lowResImg.parent(div);
-      lowResImg.addClass('lowres');
-
-      const maskImg = generateMask(lowResImg.elt, () => {
-        maskImg.parent(div);
-        maskImg.addClass('mask');
-
-        const foregroundImg = applyMaskToImage(lowResImg.elt, maskImg.elt, false, () => {
-          foregroundImg.parent(div);
-          foregroundImg.addClass('foreground');
-
-          const backgroundImg = applyMaskToImage(lowResImg.elt, maskImg.elt, true, () => {
-            backgroundImg.parent(div);
-            backgroundImg.addClass('background');
-
-            processMedia();
-          });
-        });
-      });
-    });
+    processImage(originalImg.elt, div);
   });
 }
 
@@ -89,10 +84,15 @@ function generateLowResImage(imgElement, onloaded = () => {}) {
     canvas.height = 0;
 
     lowresImg = createImg(dataUrl, '', onloaded);
-  }
-  else {
-    lowresImg = new p5.Element(imgElement);
-    setTimeout(onloaded, 0);
+
+    // Attach a 4x4 scaling transform (row-major)
+    const scaleTransform = [
+      s, 0, 0, 0,
+      0, s, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ];
+    setImageTransform(lowresImg.elt, scaleTransform);
   }
 
   return lowresImg;
@@ -123,6 +123,7 @@ function generateMask(imgElement, onloaded = () => {}) {
         //data[i + 3] = 255;     // A (fully opaque)
       }
       ctx.putImageData(imageData, 0, 0);
+      setImageTransform(maskImg.elt, getImageTransformFromElement(imgElement));
 
       maskImg.elt.onload = onloaded;
       maskImg.elt.src = maskCanvas.toDataURL();
@@ -132,54 +133,59 @@ function generateMask(imgElement, onloaded = () => {}) {
     return(maskImg);
 }
 
-function processMedia() {
-  const mediaElement = select('#media')?.elt;
-  if(mediaElement) {
-    const newElementIndex = mediaElement.childElementCount - 1;
-    const newElement = mediaElement.children[newElementIndex];
+function processHomography(id) {
+  const mediaCollection = select('#media')?.elt;
+  if(mediaCollection) {
+    const elementToProcess = select(`[id="${id}"]`);
+    if(!elementToProcess) return;
 
-    if(newElementIndex > 0){
+    if (elementToProcess.elt !== mediaCollection.children[0]) {
       let foundValidHomography = false;
-      
-      for(let n = newElementIndex - 1; n >= 0; n--) {
-        console.log("Testing alignment between:" + newElementIndex + " and:" + n);
-        Align_img(mediaElement.children[n].querySelector('.background'), newElement.querySelector('.background'));
-        if(h && !h.empty() && h.data64F) {
-          const check = isReasonableHomography(Array.from(h.data64F));
-          console.log('Homography check:', check);
-          
-          if (check.valid) {
-            // homography from new image to matching image n
-            const localTransform = [
-              h.data64F[0], h.data64F[1], 0, h.data64F[2],
-              h.data64F[3], h.data64F[4], 0, h.data64F[5],
-              0, 0, 1, 0,
-              h.data64F[6], h.data64F[7], 0, h.data64F[8]
-            ];
+      for (let n = mediaCollection.childElementCount - 1; n >= 0 && !foundValidHomography; n--) {
+        const mediaElement = mediaCollection.children[n];
+        if(id !== mediaElement.id) {
+          const selector = '.background';
+
+          console.log("Testing alignment between:" + id + " and:" + mediaElement.id);
+          const image_a = mediaElement.querySelector(selector);
+          const image_b = elementToProcess.elt.querySelector(selector);
+
+          Align_img(image_a, image_b);
+          if(h && !h.empty() && h.data64F) { 
+            const check = isReasonableHomography(Array.from(h.data64F));
+            console.log('Homography check:', check);
             
-            // combine with the transform of the matching element
-            const matchingTransform = imageTransforms[n] || identityMatrix;
-            const combinedTransform = multiplyMatrix4x4(localTransform, matchingTransform);
-            
-            imageTransforms.push(combinedTransform);
-            console.log("Computed combined transform from:" + newElementIndex + " to:" + n, combinedTransform);
-            foundValidHomography = true;
-            break;
-          } else {
-            console.warn('Rejecting homography:', check.reason);
-            // continue loop to try next
+            if (check.valid) {
+              // homography from new image (a) to matching image (b)
+              const tab = [
+                h.data64F[0], h.data64F[1], 0, h.data64F[2],
+                h.data64F[3], h.data64F[4], 0, h.data64F[5],
+                0, 0, 1, 0,
+                h.data64F[6], h.data64F[7], 0, h.data64F[8]
+              ];
+              
+              const tAa = getImageTransformFromElement(image_a);
+              const tBb_i = invertMatrix4x4(getImageTransformFromElement(image_b));
+              const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tBb_i, tab), tAa);
+
+              setImageTransform(image_b.parentElement, tAB);
+              foundValidHomography = true;
+            } else {
+              console.warn('Rejecting homography:', check.reason);
+            }
           }
-        }
+
+          /*
+          // no valid homography found with any existing element
+          if (!foundValidHomography) {
+            imageTransforms.push(null); //assumes in order of elements
+            console.log("No valid homography found, setting transform to null for index:", newElementIndex);
+          }
+          */
+          }
       }
-      
-      // no valid homography found with any existing element
-      if (!foundValidHomography) {
-        imageTransforms.push(null);
-        console.log("No valid homography found, setting transform to null for index:", newElementIndex);
-      }
-    }
-    else {
-      imageTransforms.push(identityMatrix);
+    } else {
+      setImageTransform(elementToProcess.elt, identityMatrix);
     }
   }
 }
@@ -253,33 +259,52 @@ function upsertMedia(id) {
 }
 
 /**
- * Finds the index of the image whose transformed origin (0,0) is closest to the mouse.
+ * Finds the index of the image whose transformed origin (0,0) is closest to the mouse,
+ * taking into account the framing matrix used for drawing.
  * @returns {number} - index of closest image, or -1 if none
  */
 function getClosestImageToMouse() {
   const mediaElement = select('#media')?.elt;
   if (!mediaElement) return -1;
 
-  // mouse position in WEBGL coordinates (origin at center of canvas)
-  const mx = mouseX - width / 2;
-  const my = mouseY - height / 2;
+  // Get the framing matrix used for drawing
+  const framing = getFramingMatrix3x2(mediaBoundingBox);
+
+  // Invert the framing matrix to map mouse position back to "world" coordinates
+  // [a, b, d, e, tx, ty] for 2D affine
+  const [a, b, d, e, tx, ty] = framing;
+  const det = a * e - b * d;
+  if (Math.abs(det) < 1e-12) return -1;
+
+  // Inverse affine matrix
+  const ia =  e / det;
+  const ib = -b / det;
+  const id = -d / det;
+  const ie =  a / det;
+  const itx = (d * ty - e * tx) / det;
+  const ity = (b * tx - a * ty) / det;
+
+  // Mouse position in canvas coordinates
+  const mx = mouseX;
+  const my = mouseY;
+
+  // Map mouse position to "world" coordinates
+  const worldX = ia * mx + ib * my + itx;
+  const worldY = id * mx + ie * my + ity;
 
   let closestIndex = -1;
   let closestDist = Infinity;
 
   for (let i = 0; i < mediaElement.children.length; i++) {
-    const transform = imageTransforms[i];
+    const transform = getImageTransform(i);
     if (!transform) continue;
 
-    // transform origin (0,0) to screen coords
+    // transform origin (0,0) to world coords
     const [tx, ty] = applyTransform4x4(0, 0, transform);
-    const screenX = tx * 0.6;
-    const screenY = ty * 0.6;
 
-    const dist = Math.sqrt((mx - screenX) ** 2 + (my - screenY) ** 2);
-
-    if (dist < closestDist) {
-      closestDist = dist;
+    const d = Math.sqrt((worldX - tx) ** 2 + (worldY - ty) ** 2);
+    if (d < closestDist) {
+      closestDist = d;
       closestIndex = i;
     }
   }
@@ -287,69 +312,85 @@ function getClosestImageToMouse() {
   return closestIndex;
 }
 
+function getImageTransform(index) {
+  /*
+  if (index < 0 || index >= imageTransforms.length) return null;
+  return imageTransforms[index];
+  */
+  return identityMatrix
+}
+
+/**
+ * Returns the bounding box (in screen coordinates) that contains all media elements,
+ * with their transforms applied (using imageTransforms).
+ * @returns {{left: number, top: number, right: number, bottom: number}|null}
+ */
+function getBoundingBox(selector) {
+  const mediaElement = select('#media')?.elt;
+  if (!mediaElement) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+  for (let i = 0; i < mediaElement.children.length; i++) {
+    const transform = getImageTransform(i);
+    if (!transform) continue;
+
+    const image = mediaElement.children[i].querySelector(selector);
+    if (!image) continue;
+
+    const w = image.naturalWidth || image.width;
+    const h = image.naturalHeight || image.height;
+
+    // Corners in local image coordinates (top-left origin)
+    const corners = [
+      [0, 0],
+      [w, 0],
+      [w, h],
+      [0, h]
+    ];
+
+    // Transform each corner and update bounds
+    for (const [x, y] of corners) {
+      const [tx, ty] = applyTransform4x4(x, y, transform);
+      minX = Math.min(minX, tx);
+      minY = Math.min(minY, ty);
+      maxX = Math.max(maxX, tx);
+      maxY = Math.max(maxY, ty);
+    }
+  }
+
+  if (minX === Infinity) return null;
+
+  return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+}
+
 function draw() {
+  const imageSelector = '.original';
   background(220);
+  mediaBoundingBox = getBoundingBox(imageSelector);
 
   const closestImageIndex = getClosestImageToMouse();
 
   const mediaElement = select('#media')?.elt;
   if(mediaElement) {
     push();
-      scale(0.6);
-      //for each mediaElement.children[0].querySelector('.lowres')
-      //console.log(' mediaElement:',  mediaElement);
+      applyMatrix(...getFramingMatrix3x2(mediaBoundingBox));
       for (let i = 0; i < mediaElement.children.length; i++) {
-        const image = mediaElement.children[i].querySelector('.lowres');
+        const image = mediaElement.children[i].querySelector(imageSelector);
         if (image) {
           if(i == 0) translate(-image.width / 2, -image.height / 2);
           push();
-            if(i === closestImageIndex) tint(255, 255);
-            else tint(255, 127);
-            // closest image drawn in front (lower z = closer to camera in default WEBGL)
-            const zDepth = (i === closestImageIndex) ? 0 : -1;
-            drawProjectedImage(image, 0, 0, imageTransforms[i], zDepth);
+            tint(255, 127);
+            // if(i === closestImageIndex) tint(255, 255);
+            // else tint(255, 127);
+            const zDepth = 0;//(i === closestImageIndex) ? 0 : -1;
+
+            const t = getImageTransformFromElement(image, true);
+
+            drawProjectedImage(image, 0, 0, t ? t :identityMatrix, zDepth);
           pop();
         }
       }
-
-      // for (let i = 0; i < mediaElement.children.length; i++) {
-      //   const image = mediaElement.children[i].querySelector('.foreground');
-      //   if (image) {
-      //     //tint(255, 127);
-      //     drawProjectedImage(image, 0, 0,  imageTransforms[i]);
-      //   }
-      // }
-
-      // if(inputImageA) {
-      //   push();
-      //     tint(255, 127);
-      //     drawProjectedImage(inputImageA, 0, 0,  imageTransforms[1]);
-      //   pop();
-      // }
-
-      // if(inputImageB) {
-      //   push();
-      //     tint(255, 127);
-      //     drawProjectedImage(inputImageB, 0, 0, imageTransforms[0]);
-      //   pop();
-      // }
-
-      /*
-      push();
-        // draw matches overlay last so lines appear on top
-        // keep this inside the same top-left transform so coordinates match the points/circles
-        try {
-          const gl = drawingContext;
-          if (gl && gl.disable) gl.disable(gl.DEPTH_TEST);
-        } catch (e) { }
-        drawMatchesOverlay();
-        try {
-          const gl = drawingContext;
-          if (gl && gl.enable) gl.enable(gl.DEPTH_TEST);
-        } catch (e) {}
-      // close the initial top-left transform
-      pop();
-      */
     pop();
   }
 }
@@ -411,6 +452,7 @@ function applyMaskToImage(colorImg, maskImg, invert = false, onloaded = () => {}
 
   // put the masked result back
   ctx.putImageData(colorData, 0, 0);
+  setImageTransform(resultImg.elt, getImageTransformFromElement(colorImg));
 
   // create a new p5 image element from the canvas
   resultImg.elt.onload = onloaded;
@@ -551,6 +593,8 @@ function isReasonableHomography(H, options = {}) {
 function multiplyMatrix4x4(A, B) {
   if (!A || A.length !== 16 || !B || B.length !== 16) {
     console.warn('multiplyMatrix4x4: invalid input, returning identity');
+    console.log('getImageTransformFromElement',A, B);
+
     return [...identityMatrix];
   }
 
@@ -569,39 +613,273 @@ function multiplyMatrix4x4(A, B) {
   return result;
 }
 
+function invertMatrix4x4(A) {
+  const inv = new Array(16);
+  const det = determinant4x4(A);
+  if (det === 0) {
+    return null;
+  }
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      inv[j * 4 + i] = cofactor4x4(A, i, j) / det;
+    }
+  }
+  return inv;
+}
+
+function determinant4x4(m) {
+  if (!m || m.length !== 16) return 0;
+
+  // Helper for 3x3 determinant
+  function det3(a, b, c, d, e, f, g, h, i) {
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+  }
+
+  const m0 = m[0],  m1 = m[1],  m2 = m[2],  m3 = m[3],
+        m4 = m[4],  m5 = m[5],  m6 = m[6],  m7 = m[7],
+        m8 = m[8],  m9 = m[9],  m10 = m[10], m11 = m[11],
+        m12 = m[12], m13 = m[13], m14 = m[14], m15 = m[15];
+
+  return (
+    m0 * det3(m5, m6, m7,  m9, m10, m11,  m13, m14, m15)
+    - m1 * det3(m4, m6, m7,  m8, m10, m11,  m12, m14, m15)
+    + m2 * det3(m4, m5, m7,  m8, m9, m11,  m12, m13, m15)
+    - m3 * det3(m4, m5, m6,  m8, m9, m10,  m12, m13, m14)
+  );
+}
+
+function cofactor4x4(m, row, col) {
+  // Build the 3x3 minor by skipping the given row and column
+  const minor = [];
+  for (let i = 0; i < 4; i++) {
+    if (i === row) continue;
+    for (let j = 0; j < 4; j++) {
+      if (j === col) continue;
+      minor.push(m[i * 4 + j]);
+    }
+  }
+  // Compute the determinant of the 3x3 minor
+  const det =
+    minor[0] * (minor[4] * minor[8] - minor[5] * minor[7]) -
+    minor[1] * (minor[3] * minor[8] - minor[5] * minor[6]) +
+    minor[2] * (minor[3] * minor[7] - minor[4] * minor[6]);
+  // Apply the checkerboard sign
+  return ((row + col) % 2 === 0 ? 1 : -1) * det;
+}
+
+function keyPressed() {
+  if (key === 'x' || key === 'X') {
+    exportAllMediaElements('.lowres');
+  }
+}
+
 /**
- * Creates a 4x4 transform that places a new element to the right of an existing one.
- * @param {HTMLElement} existingEl - the element already placed (e.g. mediaElement.children[n])
- * @param {HTMLElement} newEl - the new element to place to the right
- * @param {Array} existingTransform - the 4x4 transform of the existing element (flat 16-element array)
- * @param {string} imgClass - CSS class of the image to measure (e.g. 'lowres', 'foreground', 'background')
- * @param {number} gap - optional gap in pixels between elements (default 10)
- * @returns {Array} - flat 16-element 4x4 row-major transform matrix
+ * Exports each media element as a child of the #export HTML element,
+ * and sets the exported image's width and height to match its natural size,
+ * but resizes the #export container to match mediaBoundingBox.
+ * @param {string} selector - CSS selector for the image to export (e.g. '.lowres')
  */
-function getTileRightTransform(existingEl, newEl, existingTransform) {  
-  if (!existingEl || !newEl) {
-    console.warn('getTileRightTransform: missing .' + imgClass + ' elements');
-    return [...identityMatrix];
+function exportAllMediaElements(selector) {
+  const mediaElement = select('#media')?.elt;
+  const exportElement = select('#export')?.elt;
+  if (!mediaElement || !exportElement) {
+    console.warn('Missing #media or #export element');
+    return;
   }
 
-  const existingWidth = existingEl.naturalWidth || existingEl.width || 0;
+  // Set export container size to match mediaBoundingBox
+  if (mediaBoundingBox) {
+    exportElement.style.width = Math.round(mediaBoundingBox.width) + "px";
+    exportElement.style.height = Math.round(mediaBoundingBox.height) + "px";
+  }
+
+  // Clear previous exports
+  exportElement.innerHTML = '';
+
+  for (let i = 0; i < mediaElement.children.length; i++) {
+    const img = mediaElement.children[i].querySelector(selector);
+    if (img) {
+      // Clone the image node so it can be appended elsewhere
+      const clone = img.cloneNode(true);
+      // Set to natural/original size (no scaling)
+      clone.width = img.naturalWidth || img.width;
+      clone.height = img.naturalHeight || img.height;
+      clone.style.width = (img.naturalWidth || img.width) + "px";
+      clone.style.height = (img.naturalHeight || img.height) + "px";
+      exportElement.appendChild(clone);
+    }
+  }
+}
+
+/**
+ * Creates as many fully transparent PNG image elements as there are media elements,
+ * each with the dimensions of mediaBoundingBox, draws the corresponding media image into it
+ * using its transform relative to the bounding box, and appends them to #export.
+ */
+function exportAllMediaElements() {
+  const mediaElement = select('#media')?.elt;
+  const exportElement = select('#export')?.elt;
+  if (!mediaElement || !exportElement || !mediaBoundingBox) {
+    console.warn('Missing #media, #export, or mediaBoundingBox');
+    return;
+  }
+
+  // Clear previous exports
+  exportElement.innerHTML = '';
+
+  const w = Math.round(mediaBoundingBox.width);
+  const h = Math.round(mediaBoundingBox.height);
+
+  for (let i = 0; i < mediaElement.children.length; i++) {
+    // Create a canvas for export
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    // Fill with fully transparent background
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw the media image (e.g. .lowres) into the canvas, using its transform
+    const img = mediaElement.children[i].querySelector('.lowres');
+    const transform = getImageTransform(i);
+    if (img && transform) {
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+
+      // Use only the 2D affine part for drawImage
+      const a = transform[0];
+      const b = transform[1];
+      const c = transform[4];
+      const d = transform[5];
+      const tx = transform[3] - mediaBoundingBox.left;
+      const ty = transform[7] - mediaBoundingBox.top;
+
+      ctx.save();
+      ctx.setTransform(a, b, c, d, tx, ty);
+      ctx.drawImage(img, 0, 0, imgW, imgH);
+      ctx.restore();
+    }
+
+    // Create an image element from the canvas
+    const outImg = document.createElement('img');
+    outImg.src = canvas.toDataURL('image/png');
+    outImg.width = w;
+    outImg.height = h;
+    outImg.style.width = w + "px";
+    outImg.style.height = h + "px";
+
+    exportElement.appendChild(outImg);
+  }
+}
+
+/**
+ * Returns a 3x2 affine matrix [a, b, d, e, tx, ty] that frames the bounding box within the canvas.
+ * Suitable for p5.js applyMatrix(a, b, d, e, tx, ty).
+ * @param {{left: number, top: number, width: number, height: number}} boundingBox
+ * @returns {Array} - flat 6-element array [a, b, d, e, tx, ty]
+ */
+function getFramingMatrix3x2(boundingBox) {
+  if (!boundingBox) return [1, 0, 0, 1, 0, 0];
+
+  // Compute scale to fit bounding box into canvas
+  const s = Math.min(width / boundingBox.width, height / boundingBox.height);
+
+  // Compute translation to move bounding box's top-left to (0,0) after scaling
+  const tx = -boundingBox.left * s;
+  const ty = -boundingBox.top * s;
+
+  // 2D scale + translate in 3x2 form: [a, b, d, e, tx, ty]
+  // [ s, 0, 0 ]
+  // [ 0, s, 0 ]
+  // [ tx, ty, 1 ]
+  return [s, 0, 0, s, tx, ty];
+}
+
+async function processAnyAttachedMedia() {
+  const originals = selectAll('#media .original');
+  // Wait for all images to load
+  await Promise.all(originals.map(i => {
+    return new Promise(resolve => {
+      if (i.elt.complete) resolve();
+      else {
+        i.elt.onload = resolve;
+        i.elt.onerror = resolve;
+      }
+    });
+  }));
+
+  // Process images sequentially
+  for (const i of originals) {
+    setImageTransform(i.elt, identityMatrix);
+    await processImage(i.elt, i.parent());
+    processHomography(i.parent().id);
+  }
+}
+
+async function processImage(originalImgElement, div) {
+  // 1. Generate low-res image and wait for it to load
+  const lowResImg = await generateLowResImageAsync(originalImgElement);
+  lowResImg.parent(div);
+  lowResImg.addClass('lowres');
+
+  // 2. Generate mask and wait for it to load
+  const maskImg = await generateMaskAsync(lowResImg.elt);
+  maskImg.parent(div);
+  maskImg.addClass('mask');
+
+  // 3. Apply mask to get foreground and background, wait for both
+  const [foregroundImg, backgroundImg] = await Promise.all([
+    applyMaskToImageAsync(lowResImg.elt, maskImg.elt, false),
+    applyMaskToImageAsync(lowResImg.elt, maskImg.elt, true)
+  ]);
+  foregroundImg.parent(div);
+  foregroundImg.addClass('foreground');
+  backgroundImg.parent(div);
+  backgroundImg.addClass('background');
+
+  // 4. Process media collection (if needed)
+  //processMediaCollection();
+}
+
+// Helper: Promise version of generateLowResImage
+function generateLowResImageAsync(imgElement) {
+  return new Promise(resolve => {
+    const lowresImg = generateLowResImage(imgElement, () => resolve(lowresImg));
+  });
+}
+
+// Helper: Promise version of generateMask
+function generateMaskAsync(imgElement) {
+  return new Promise(resolve => {
+    const maskImg = generateMask(imgElement, () => resolve(maskImg));
+  });
+}
+
+// Helper: Promise version of applyMaskToImage
+function applyMaskToImageAsync(colorImg, maskImg, invert) {
+  return new Promise(resolve => {
+    const resultImg = applyMaskToImage(colorImg, maskImg, invert, () => resolve(resultImg));
+  });
+}
+
+function setImageTransform(element, transform) {
+  if (element && Array.isArray(transform)) {
+    element.setAttribute('data-transform', JSON.stringify(transform));
+  }
+}
+
+function getImageTransformFromElement(element, traverse = false) {
+  let result = identityMatrix;
+
+  if (!element) return identityMatrix;
+  const b = traverse ? getImageTransformFromElement(element.parentElement, false) : identityMatrix;
+  try {
+    result = JSON.parse(element.getAttribute('data-transform')) || identityMatrix;
+  }
+  catch (e) {
+  }
+  result = multiplyMatrix4x4(result, b);
   
-  // extract translation from existing transform (if any)
-  let existingTx = 0, existingTy = 0;
-  if (existingTransform && existingTransform.length === 16) {
-    existingTx = existingTransform[3];
-    existingTy = existingTransform[7];
-  }
-
-  // new element's X = existing X + existing width + gap
-  const newTx = existingTx + existingWidth + gap;
-  const newTy = existingTy; // same Y position
-
-  // return identity with translation applied
-  return [
-    1, 0, 0, newTx,
-    0, 1, 0, newTy,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ];
+  return result;
 }
