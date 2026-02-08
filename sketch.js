@@ -86,9 +86,10 @@ function generateLowResImage(imgElement, onloaded = () => {}) {
     lowresImg.elt.onload = onloaded;
 
     // Attach a 4x4 scaling transform (row-major)
+    const invS = 1 / s;
     const scaleTransform = [
-      s, 0, 0, 0,
-      0, s, 0, 0,
+      invS, 0, 0, 0,
+      0, invS, 0, 0,
       0, 0, 1, 0,
       0, 0, 0, 1
     ];
@@ -183,7 +184,7 @@ function processHomography(id) {
 
               const tBb = getImageTransformFromElement(image_b);
               const tBb_i = invertMatrix4x4(tBb);
-              const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tBb_i, tab), tAa);
+              const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tAa, tab), tBb_i);
               t0B = multiplyMatrix4x4(t0A, tAB);
 
               setImageTransform(image_b.parentElement, t0B);
@@ -883,14 +884,14 @@ function getImageTransformFromElement(element, traverse = false) {
   let result = null;
 
   if (element){
-    const b = traverse ? getImageTransformFromElement(element.parentElement, false) : identityMatrix;
+    const b = traverse ? (getImageTransformFromElement(element.parentElement, false) || identityMatrix) : identityMatrix;
     try {
       result = JSON.parse(element.getAttribute('data-transform'));
     }
     catch (e) {
     }
-    if(result) result = multiplyMatrix4x4(result, b);
+    if(result) result = multiplyMatrix4x4(b, result);
   }
-  
+
   return result;
 }
