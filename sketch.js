@@ -325,48 +325,44 @@ function upsertMedia(id) {
  * taking into account the framing matrix used for drawing.
  * @returns {number} - index of closest image, or -1 if none
  */
+function framingMatrix3x2To4x4(framing) {
+  const [a, b, c, d, e, f] = framing;
+  return [
+    a, c, 0, e,
+    b, d, 0, f,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  ];
+}
+
 function getClosestImageToMouse() {
   const mediaElement = select('#media')?.elt;
   if (!mediaElement) return -1;
 
-  // Get the framing matrix used for drawing
-  const framing = getFramingMatrix3x2(mediaBoundingBox);
+  const framingInv = invertMatrix4x4(framingMatrix3x2To4x4(getFramingMatrix3x2(mediaBoundingBox)));
+  if (!framingInv) return -1;
 
-  // Invert the framing matrix to map mouse position back to "world" coordinates
-  // [a, b, d, e, tx, ty] for 2D affine
-  const [a, b, d, e, tx, ty] = framing;
-  const det = a * e - b * d;
-  if (Math.abs(det) < 1e-12) return -1;
-
-  // Inverse affine matrix
-  const ia =  e / det;
-  const ib = -b / det;
-  const id = -d / det;
-  const ie =  a / det;
-  const itx = (d * ty - e * tx) / det;
-  const ity = (b * tx - a * ty) / det;
-
-  // Mouse position in canvas coordinates
-  const mx = mouseX;
-  const my = mouseY;
-
-  // Map mouse position to "world" coordinates
-  const worldX = ia * mx + ib * my + itx;
-  const worldY = id * mx + ie * my + ity;
+  // Mouse in WEBGL coords (origin at canvas center)
+  const [worldX, worldY] = applyTransform4x4(mouseX - width / 2, mouseY - height / 2, framingInv);
 
   let closestIndex = -1;
   let closestDist = Infinity;
 
   for (let i = 0; i < mediaElement.children.length; i++) {
-    const transform = getImageTransformFromElement(mediaElement.children[i], true);
+    const image = mediaElement.children[i].querySelector('.original');
+    if (!image) continue;
+
+    const transform = getImageTransformFromElement(image, true);
     if (!transform) continue;
 
-    // transform origin (0,0) to world coords
-    const [tx, ty] = applyTransform4x4(0, 0, transform);
+    // Transform image center to world coords
+    const w = image.naturalWidth || image.width;
+    const h = image.naturalHeight || image.height;
+    const [cx, cy] = applyTransform4x4(w / 2, h / 2, transform);
 
-    const d = Math.sqrt((worldX - tx) ** 2 + (worldY - ty) ** 2);
-    if (d < closestDist) {
-      closestDist = d;
+    const dist = Math.sqrt((worldX - cx) ** 2 + (worldY - cy) ** 2);
+    if (dist < closestDist) {
+      closestDist = dist;
       closestIndex = i;
     }
   }
@@ -423,7 +419,7 @@ function draw() {
   background(220);
   mediaBoundingBox = getBoundingBox(imageSelector);
 
-  //getClosestImageToMouse();
+  closestImageIndex = getClosestImageToMouse();
 
   const mediaElement = select('#media')?.elt;
   if(mediaElement) {
