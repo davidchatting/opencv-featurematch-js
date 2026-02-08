@@ -432,7 +432,6 @@ function draw() {
       for (let i = 0; i < mediaElement.children.length; i++) {
         const image = mediaElement.children[i].querySelector(imageSelector);
         if (image) {
-          if(i == 0) translate(-image.width / 2, -image.height / 2);
           push();
             //tint(255, 127);
             if(i === closestImageIndex) tint(255, 255);
@@ -797,9 +796,9 @@ function getFramingMatrix3x2(boundingBox) {
   // Compute scale to fit bounding box into canvas
   const s = Math.min(width / boundingBox.width, height / boundingBox.height);
 
-  // Compute translation to move bounding box's top-left to (0,0) after scaling
-  const tx = -boundingBox.left * s;
-  const ty = -boundingBox.top * s;
+  // Compute translation to center bounding box at (0,0) for WEBGL origin
+  const tx = -(boundingBox.left + boundingBox.width / 2) * s;
+  const ty = -(boundingBox.top + boundingBox.height / 2) * s;
 
   // 2D scale + translate in 3x2 form: [a, b, d, e, tx, ty]
   // [ s, 0, 0 ]
