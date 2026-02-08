@@ -11,3 +11,7 @@ canvas {
 #media {
   visibility: hidden;
 }
+
+#export.img {
+  width: 100px;
+} 
