@@ -162,7 +162,11 @@ function processHomography(id) {
   // Skip if already aligned
   if (getImageTransformFromElement(image_b.parentElement)) return;
 
-  // Try matching against all previously aligned images (newest first)
+  // Try all previously aligned images and pick the best match by inlier count
+  let bestInliers = 0;
+  let bestT0B = null;
+  let bestMatchId = null;
+
   for (let i = n - 2; i >= 0; i--) {
     const image_a = mediaCollection[i];
     const t0A = getImageTransformFromElement(image_a.parentElement);
@@ -170,14 +174,16 @@ function processHomography(id) {
     // Skip images that haven't been aligned yet
     if (!t0A) continue;
 
-    console.log('*** align ', image_a.parentElement.id, image_b.parentElement.id);
+    console.log('*** trying align ', image_a.parentElement.id, image_b.parentElement.id);
     Align_img(image_a, image_b);
+
+    const inlierCount = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
     if (h && !h.empty() && h.data64F) {
       const check = isReasonableHomography(Array.from(h.data64F));
-      console.log('Homography check:', check);
+      console.log('Homography check:', check, 'inliers:', inlierCount);
 
-      if (check.valid) {
+      if (check.valid && inlierCount > bestInliers) {
         const tab = [
           h.data64F[0], h.data64F[1], 0, h.data64F[2],
           h.data64F[3], h.data64F[4], 0, h.data64F[5],
@@ -189,17 +195,22 @@ function processHomography(id) {
         const tBb = getImageTransformFromElement(image_b);
         const tBb_i = invertMatrix4x4(tBb);
         const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tAa, tab), tBb_i);
-        const t0B = multiplyMatrix4x4(t0A, tAB);
 
-        setImageTransform(image_b.parentElement, t0B);
-        return; // Found a valid match
-      } else {
+        bestT0B = multiplyMatrix4x4(t0A, tAB);
+        bestInliers = inlierCount;
+        bestMatchId = image_a.parentElement.id;
+      } else if (!check.valid) {
         console.warn('Rejecting homography with', image_a.parentElement.id, ':', check.reason);
       }
     }
   }
 
-  console.warn('No valid homography found for', image_b.parentElement.id);
+  if (bestT0B) {
+    console.log('Best match for', image_b.parentElement.id, ':', bestMatchId, 'with', bestInliers, 'inliers');
+    setImageTransform(image_b.parentElement, bestT0B);
+  } else {
+    console.warn('No valid homography found for', image_b.parentElement.id);
+  }
 }
 
 // cache for converted images (HTMLImageElement -> p5.Graphics)
