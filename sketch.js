@@ -7,6 +7,7 @@ const identityMatrix = [
 
 const imageTransforms = [];
 let mediaBoundingBox = null;
+let closestImageIndex = 0;
 
 let maskSegmentation = null;
 
@@ -34,8 +35,8 @@ async function createForegroundSegmenter() {
 // In setup(), use async/await to block until ready
 async function setup() {
   // Use WEBGL so texture()/vertex(u,v) in drawImageWithHomography works
-  canvas = createCanvas(1600, 800, WEBGL);
-  frameRate(30);
+  canvas = createCanvas(2000, 800, WEBGL);
+  frameRate(10);
   canvas.drop(onFileDropped);
 
   // Block until segmenter is ready
@@ -64,7 +65,7 @@ function onFileDropped(file) {
 function generateLowResImage(imgElement, onloaded = () => {}) {
   let lowresImg = null;
 
-  const lowresMaxPixels = 640 * 480;
+  const lowresMaxPixels = 1024 * 768;
   if (imgElement.width * imgElement.height > lowresMaxPixels) { 
     const s = Math.sqrt(lowresMaxPixels / (imgElement.width * imgElement.height));
 
@@ -74,16 +75,15 @@ function generateLowResImage(imgElement, onloaded = () => {}) {
     const canvas = document.createElement('canvas');
     canvas.width = targetW;
     canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(imgElement, 0, 0, targetW, targetH);
 
     const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
-    
-    // clear canvas to free memory immediately
     canvas.width = 0;
     canvas.height = 0;
 
-    lowresImg = createImg(dataUrl, '', onloaded);
+    lowresImg = createImg(dataUrl, '');
+    lowresImg.elt.onload = onloaded;
 
     // Attach a 4x4 scaling transform (row-major)
     const scaleTransform = [
@@ -93,6 +93,17 @@ function generateLowResImage(imgElement, onloaded = () => {}) {
       0, 0, 0, 1
     ];
     setImageTransform(lowresImg.elt, scaleTransform);
+  } else {
+    lowresImg = new p5.Element(imgElement);
+    setTimeout(onloaded, 0);
+
+    // Attach identity transform (no scaling)
+    setImageTransform(lowresImg.elt, [
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    ]);
   }
 
   return lowresImg;
@@ -120,7 +131,6 @@ function generateMask(imgElement, onloaded = () => {}) {
         data[i]     = r;       // R (keep)
         data[i + 1] = r;       // G (copy from R)
         data[i + 2] = r;       // B (copy from R)
-        //data[i + 3] = 255;     // A (fully opaque)
       }
       ctx.putImageData(imageData, 0, 0);
       setImageTransform(maskImg.elt, getImageTransformFromElement(imgElement));
@@ -134,23 +144,25 @@ function generateMask(imgElement, onloaded = () => {}) {
 }
 
 function processHomography(id) {
-  const mediaCollection = select('#media')?.elt;
+  const selector = '.background';
+  const mediaCollection = select('#media')?.elt.querySelectorAll(selector);
+  console.log('mediaCollection',mediaCollection);
+
   if(mediaCollection) {
-    const elementToProcess = select(`[id="${id}"]`);
-    if(!elementToProcess) return;
-
-    if (elementToProcess.elt !== mediaCollection.children[0]) {
-      let foundValidHomography = false;
-      for (let n = mediaCollection.childElementCount - 1; n >= 0 && !foundValidHomography; n--) {
-        const mediaElement = mediaCollection.children[n];
-        if(id !== mediaElement.id) {
-          const selector = '.background';
-
-          console.log("Testing alignment between:" + id + " and:" + mediaElement.id);
-          const image_a = mediaElement.querySelector(selector);
-          const image_b = elementToProcess.elt.querySelector(selector);
-
+    const n = mediaCollection.length;
+    if(n > 0) {
+      if(n == 1) {
+        setImageTransform(mediaCollection[0].parentElement, identityMatrix);
+      }
+      else {
+        let image_a = mediaCollection[n-2];
+        let image_b = mediaCollection[n-1];
+        let t0A = getImageTransformFromElement(image_a.parentElement);
+        let t0B = getImageTransformFromElement(image_b.parentElement);
+        if(t0A && !t0B) {
+          console.log('*** align ', image_a.parentElement.id, image_b.parentElement.id);
           Align_img(image_a, image_b);
+
           if(h && !h.empty() && h.data64F) { 
             const check = isReasonableHomography(Array.from(h.data64F));
             console.log('Homography check:', check);
@@ -165,29 +177,78 @@ function processHomography(id) {
               ];
               
               const tAa = getImageTransformFromElement(image_a);
-              const tBb_i = invertMatrix4x4(getImageTransformFromElement(image_b));
-              const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tBb_i, tab), tAa);
+              //const t0a = multiplyMatrix4x4(t0A, tAa);
+              //const t0b = multiplyMatrix4x4(t0a, tab);
+              //const tAb = multiplyMatrix4x4(tAa, tab);
 
-              setImageTransform(image_b.parentElement, tAB);
-              foundValidHomography = true;
+              const tBb = getImageTransformFromElement(image_b);
+              const tBb_i = invertMatrix4x4(tBb);
+              const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tBb_i, tab), tAa);
+              t0B = multiplyMatrix4x4(t0A, tAB);
+
+              setImageTransform(image_b.parentElement, t0B);
             } else {
               console.warn('Rejecting homography:', check.reason);
             }
           }
+        }
+      }
+    }
+  }
 
-          /*
-          // no valid homography found with any existing element
-          if (!foundValidHomography) {
-            imageTransforms.push(null); //assumes in order of elements
-            console.log("No valid homography found, setting transform to null for index:", newElementIndex);
+  /*
+  if(mediaCollection && mediaCollection.childElementCount > 0) {
+    const elementToProcess = select(`[id="${id}"]`);
+    if(!elementToProcess) return;
+
+    if (elementToProcess.elt !== mediaCollection.children[0]) {
+      let foundValidHomography = false;
+
+      const image_b = elementToProcess.elt.querySelector(selector);
+      for (let n = mediaCollection.childElementCount - 1; n >= 0 && !foundValidHomography; n--) {
+        const mediaElement = mediaCollection.children[n];
+        if(id !== mediaElement.id) {
+          const image_a = mediaElement.querySelector(selector);
+
+          console.log("*align to B:" + image_b);
+          console.log("*align to B:" + image_b.parentElement.id);
+
+          console.log("*align from A:" + image_a);
+          console.log("*align from A:" + image_a.parentElement.id);
+
+          if(image_a &&image_b && !getImageTransformFromElement(image_b.parentElement)) {
+            Align_img(image_a, image_b);
+            if(h && !h.empty() && h.data64F) { 
+              const check = isReasonableHomography(Array.from(h.data64F));
+              console.log('Homography check:', check);
+              
+              if (check.valid) {
+                // homography from new image (a) to matching image (b)
+                const tab = [
+                  h.data64F[0], h.data64F[1], 0, h.data64F[2],
+                  h.data64F[3], h.data64F[4], 0, h.data64F[5],
+                  0, 0, 1, 0,
+                  h.data64F[6], h.data64F[7], 0, h.data64F[8]
+                ];
+                
+                const tAa = getImageTransformFromElement(image_a);
+                const tBb_i = invertMatrix4x4(getImageTransformFromElement(image_b));
+                const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tBb_i, tab), tAa);
+
+                setImageTransform(image_b.parentElement, tAB);
+                foundValidHomography = true;
+              } else {
+                console.warn('Rejecting homography:', check.reason);
+              }
+            }
           }
-          */
           }
       }
     } else {
       setImageTransform(elementToProcess.elt, identityMatrix);
     }
   }
+    */
 }
 
 // cache for converted images (HTMLImageElement -> p5.Graphics)
@@ -296,7 +357,7 @@ function getClosestImageToMouse() {
   let closestDist = Infinity;
 
   for (let i = 0; i < mediaElement.children.length; i++) {
-    const transform = getImageTransform(i);
+    const transform = getImageTransformFromElement(mediaElement.children[i], true);
     if (!transform) continue;
 
     // transform origin (0,0) to world coords
@@ -312,14 +373,6 @@ function getClosestImageToMouse() {
   return closestIndex;
 }
 
-function getImageTransform(index) {
-  /*
-  if (index < 0 || index >= imageTransforms.length) return null;
-  return imageTransforms[index];
-  */
-  return identityMatrix
-}
-
 /**
  * Returns the bounding box (in screen coordinates) that contains all media elements,
  * with their transforms applied (using imageTransforms).
@@ -332,7 +385,7 @@ function getBoundingBox(selector) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
   for (let i = 0; i < mediaElement.children.length; i++) {
-    const transform = getImageTransform(i);
+    const transform = getImageTransformFromElement(mediaElement.children[i], true) || identityMatrix;
     if (!transform) continue;
 
     const image = mediaElement.children[i].querySelector(selector);
@@ -369,7 +422,7 @@ function draw() {
   background(220);
   mediaBoundingBox = getBoundingBox(imageSelector);
 
-  const closestImageIndex = getClosestImageToMouse();
+  //getClosestImageToMouse();
 
   const mediaElement = select('#media')?.elt;
   if(mediaElement) {
@@ -380,10 +433,10 @@ function draw() {
         if (image) {
           if(i == 0) translate(-image.width / 2, -image.height / 2);
           push();
-            tint(255, 127);
-            // if(i === closestImageIndex) tint(255, 255);
-            // else tint(255, 127);
-            const zDepth = 0;//(i === closestImageIndex) ? 0 : -1;
+            //tint(255, 127);
+            if(i === closestImageIndex) tint(255, 255);
+            else tint(255, 10);
+            const zDepth = (i === closestImageIndex) ? 0 : -1;
 
             const t = getImageTransformFromElement(image, true);
 
@@ -420,41 +473,32 @@ function applyMaskToImage(colorImg, maskImg, invert = false, onloaded = () => {}
   const w = colorImg.naturalWidth || colorImg.width;
   const h = colorImg.naturalHeight || colorImg.height;
 
-  // create a canvas to composite the result
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-  // draw the colour image first
   ctx.drawImage(colorImg, 0, 0, w, h);
 
-  // get colour image data
   const colorData = ctx.getImageData(0, 0, w, h);
   const cPixels = colorData.data;
 
-  // draw the mask (scaled to same size)
   ctx.clearRect(0, 0, w, h);
   ctx.drawImage(maskImg, 0, 0, w, h);
   const maskData = ctx.getImageData(0, 0, w, h);
   const mPixels = maskData.data;
 
-  // apply mask: use mask's red channel as alpha
   for (let i = 0; i < cPixels.length; i += 4) {
-    // mask value (0 = transparent, 255 = opaque)
-    const maskVal = invert ? 255 - mPixels[i] : mPixels[i]; // red channel of mask
-
+    const maskVal = invert ? 255 - mPixels[i] : mPixels[i];
     cPixels[i] = maskVal > 0 ? cPixels[i] : random(255);
     cPixels[i + 1] = maskVal > 0 ? cPixels[i + 1] : random(255);
     cPixels[i + 2] = maskVal > 0 ? cPixels[i + 2] : random(255);
-    cPixels[i + 3] = maskVal;   // set alpha of colour pixel
+    cPixels[i + 3] = maskVal;
   }
 
-  // put the masked result back
   ctx.putImageData(colorData, 0, 0);
   setImageTransform(resultImg.elt, getImageTransformFromElement(colorImg));
 
-  // create a new p5 image element from the canvas
   resultImg.elt.onload = onloaded;
   resultImg.elt.src = canvas.toDataURL();
 
@@ -591,22 +635,21 @@ function isReasonableHomography(H, options = {}) {
  * @returns {Array} - flat 16-element row-major 4x4 matrix (A * B)
  */
 function multiplyMatrix4x4(A, B) {
+  let result = null;
+
   if (!A || A.length !== 16 || !B || B.length !== 16) {
-    console.warn('multiplyMatrix4x4: invalid input, returning identity');
-    console.log('getImageTransformFromElement',A, B);
-
-    return [...identityMatrix];
   }
+  else {
+    result = new Array(16);
 
-  const result = new Array(16);
-
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) {
-      let sum = 0;
-      for (let k = 0; k < 4; k++) {
-        sum += A[row * 4 + k] * B[k * 4 + col];
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 4; col++) {
+        let sum = 0;
+        for (let k = 0; k < 4; k++) {
+          sum += A[row * 4 + k] * B[k * 4 + col];
+        }
+        result[row * 4 + col] = sum;
       }
-      result[row * 4 + col] = sum;
     }
   }
 
@@ -628,7 +671,7 @@ function invertMatrix4x4(A) {
 }
 
 function determinant4x4(m) {
-  if (!m || m.length !== 16) return 0;
+  if (!m || m.length !== 16) return null;
 
   // Helper for 3x3 determinant
   function det3(a, b, c, d, e, f, g, h, i) {
@@ -669,45 +712,12 @@ function cofactor4x4(m, row, col) {
 
 function keyPressed() {
   if (key === 'x' || key === 'X') {
-    exportAllMediaElements('.lowres');
-  }
-}
-
-/**
- * Exports each media element as a child of the #export HTML element,
- * and sets the exported image's width and height to match its natural size,
- * but resizes the #export container to match mediaBoundingBox.
- * @param {string} selector - CSS selector for the image to export (e.g. '.lowres')
- */
-function exportAllMediaElements(selector) {
-  const mediaElement = select('#media')?.elt;
-  const exportElement = select('#export')?.elt;
-  if (!mediaElement || !exportElement) {
-    console.warn('Missing #media or #export element');
-    return;
+    exportAllMediaElements('.original');
   }
 
-  // Set export container size to match mediaBoundingBox
-  if (mediaBoundingBox) {
-    exportElement.style.width = Math.round(mediaBoundingBox.width) + "px";
-    exportElement.style.height = Math.round(mediaBoundingBox.height) + "px";
-  }
-
-  // Clear previous exports
-  exportElement.innerHTML = '';
-
-  for (let i = 0; i < mediaElement.children.length; i++) {
-    const img = mediaElement.children[i].querySelector(selector);
-    if (img) {
-      // Clone the image node so it can be appended elsewhere
-      const clone = img.cloneNode(true);
-      // Set to natural/original size (no scaling)
-      clone.width = img.naturalWidth || img.width;
-      clone.height = img.naturalHeight || img.height;
-      clone.style.width = (img.naturalWidth || img.width) + "px";
-      clone.style.height = (img.naturalHeight || img.height) + "px";
-      exportElement.appendChild(clone);
-    }
+  // Set closestImageIndex from number keys
+  if (key >= '0' && key <= '9') {
+    closestImageIndex = Number(key) - 1;
   }
 }
 
@@ -716,7 +726,7 @@ function exportAllMediaElements(selector) {
  * each with the dimensions of mediaBoundingBox, draws the corresponding media image into it
  * using its transform relative to the bounding box, and appends them to #export.
  */
-function exportAllMediaElements() {
+function exportAllMediaElements(selector) {
   const mediaElement = select('#media')?.elt;
   const exportElement = select('#export')?.elt;
   if (!mediaElement || !exportElement || !mediaBoundingBox) {
@@ -741,8 +751,9 @@ function exportAllMediaElements() {
     ctx.clearRect(0, 0, w, h);
 
     // Draw the media image (e.g. .lowres) into the canvas, using its transform
-    const img = mediaElement.children[i].querySelector('.lowres');
-    const transform = getImageTransform(i);
+    const img = mediaElement.children[i].querySelector(selector);
+    const transform = getImageTransformFromElement(img, true);
+    console.log(transform);
     if (img && transform) {
       const imgW = img.naturalWidth || img.width;
       const imgH = img.naturalHeight || img.height;
@@ -809,11 +820,12 @@ async function processAnyAttachedMedia() {
     });
   }));
 
-  // Process images sequentially
-  for (const i of originals) {
-    setImageTransform(i.elt, identityMatrix);
-    await processImage(i.elt, i.parent());
-    processHomography(i.parent().id);
+  // Process images sequentially using a numerical index
+  for (let idx = 0; idx < originals.length; idx++) {
+    const orig = originals[idx];
+    setImageTransform(orig.elt, identityMatrix);
+    await processImage(orig.elt, orig.parent());
+    processHomography(orig.parent().id);
   }
 }
 
@@ -837,9 +849,6 @@ async function processImage(originalImgElement, div) {
   foregroundImg.addClass('foreground');
   backgroundImg.parent(div);
   backgroundImg.addClass('background');
-
-  // 4. Process media collection (if needed)
-  //processMediaCollection();
 }
 
 // Helper: Promise version of generateLowResImage
@@ -864,22 +873,24 @@ function applyMaskToImageAsync(colorImg, maskImg, invert) {
 }
 
 function setImageTransform(element, transform) {
+  console.log('setImageTransform', element, transform);
   if (element && Array.isArray(transform)) {
     element.setAttribute('data-transform', JSON.stringify(transform));
   }
 }
 
 function getImageTransformFromElement(element, traverse = false) {
-  let result = identityMatrix;
+  let result = null;
 
-  if (!element) return identityMatrix;
-  const b = traverse ? getImageTransformFromElement(element.parentElement, false) : identityMatrix;
-  try {
-    result = JSON.parse(element.getAttribute('data-transform')) || identityMatrix;
+  if (element){
+    const b = traverse ? getImageTransformFromElement(element.parentElement, false) : identityMatrix;
+    try {
+      result = JSON.parse(element.getAttribute('data-transform'));
+    }
+    catch (e) {
+    }
+    if(result) result = multiplyMatrix4x4(result, b);
   }
-  catch (e) {
-  }
-  result = multiplyMatrix4x4(result, b);
   
   return result;
 }
