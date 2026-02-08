@@ -715,10 +715,12 @@ function exportAllMediaElements(selector) {
       const imgW = img.naturalWidth || img.width;
       const imgH = img.naturalHeight || img.height;
 
-      // Use only the 2D affine part for drawImage
+      // Extract 2D affine for canvas setTransform(a, b, c, d, e, f)
+      // Canvas: | a c e |  Our 4x4: X = M[0]*x + M[1]*y + M[3]
+      //         | b d f |           Y = M[4]*x + M[5]*y + M[7]
       const a = transform[0];
-      const b = transform[1];
-      const c = transform[4];
+      const b = transform[4];
+      const c = transform[1];
       const d = transform[5];
       const tx = transform[3] - mediaBoundingBox.left;
       const ty = transform[7] - mediaBoundingBox.top;
