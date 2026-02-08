@@ -147,109 +147,59 @@ function generateMask(imgElement, onloaded = () => {}) {
 function processHomography(id) {
   const selector = '.background';
   const mediaCollection = select('#media')?.elt.querySelectorAll(selector);
-  console.log('mediaCollection',mediaCollection);
+  if (!mediaCollection || mediaCollection.length === 0) return;
 
-  if(mediaCollection) {
-    const n = mediaCollection.length;
-    if(n > 0) {
-      if(n == 1) {
-        setImageTransform(mediaCollection[0].parentElement, identityMatrix);
-      }
-      else {
-        let image_a = mediaCollection[n-2];
-        let image_b = mediaCollection[n-1];
-        let t0A = getImageTransformFromElement(image_a.parentElement);
-        let t0B = getImageTransformFromElement(image_b.parentElement);
-        if(t0A && !t0B) {
-          console.log('*** align ', image_a.parentElement.id, image_b.parentElement.id);
-          Align_img(image_a, image_b);
+  const n = mediaCollection.length;
 
-          if(h && !h.empty() && h.data64F) { 
-            const check = isReasonableHomography(Array.from(h.data64F));
-            console.log('Homography check:', check);
-            
-            if (check.valid) {
-              // homography from new image (a) to matching image (b)
-              const tab = [
-                h.data64F[0], h.data64F[1], 0, h.data64F[2],
-                h.data64F[3], h.data64F[4], 0, h.data64F[5],
-                0, 0, 1, 0,
-                h.data64F[6], h.data64F[7], 0, h.data64F[8]
-              ];
-              
-              const tAa = getImageTransformFromElement(image_a);
-              //const t0a = multiplyMatrix4x4(t0A, tAa);
-              //const t0b = multiplyMatrix4x4(t0a, tab);
-              //const tAb = multiplyMatrix4x4(tAa, tab);
+  if (n === 1) {
+    setImageTransform(mediaCollection[0].parentElement, identityMatrix);
+    return;
+  }
 
-              const tBb = getImageTransformFromElement(image_b);
-              const tBb_i = invertMatrix4x4(tBb);
-              const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tAa, tab), tBb_i);
-              t0B = multiplyMatrix4x4(t0A, tAB);
+  // The newest image is the last one
+  const image_b = mediaCollection[n - 1];
 
-              setImageTransform(image_b.parentElement, t0B);
-            } else {
-              console.warn('Rejecting homography:', check.reason);
-            }
-          }
-        }
+  // Skip if already aligned
+  if (getImageTransformFromElement(image_b.parentElement)) return;
+
+  // Try matching against all previously aligned images (newest first)
+  for (let i = n - 2; i >= 0; i--) {
+    const image_a = mediaCollection[i];
+    const t0A = getImageTransformFromElement(image_a.parentElement);
+
+    // Skip images that haven't been aligned yet
+    if (!t0A) continue;
+
+    console.log('*** align ', image_a.parentElement.id, image_b.parentElement.id);
+    Align_img(image_a, image_b);
+
+    if (h && !h.empty() && h.data64F) {
+      const check = isReasonableHomography(Array.from(h.data64F));
+      console.log('Homography check:', check);
+
+      if (check.valid) {
+        const tab = [
+          h.data64F[0], h.data64F[1], 0, h.data64F[2],
+          h.data64F[3], h.data64F[4], 0, h.data64F[5],
+          0, 0, 1, 0,
+          h.data64F[6], h.data64F[7], 0, h.data64F[8]
+        ];
+
+        const tAa = getImageTransformFromElement(image_a);
+        const tBb = getImageTransformFromElement(image_b);
+        const tBb_i = invertMatrix4x4(tBb);
+        const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tAa, tab), tBb_i);
+        const t0B = multiplyMatrix4x4(t0A, tAB);
+
+        setImageTransform(image_b.parentElement, t0B);
+        return; // Found a valid match
+      } else {
+        console.warn('Rejecting homography with', image_a.parentElement.id, ':', check.reason);
       }
     }
   }
 
-  /*
-  if(mediaCollection && mediaCollection.childElementCount > 0) {
-    const elementToProcess = select(`[id="${id}"]`);
-    if(!elementToProcess) return;
-
-    if (elementToProcess.elt !== mediaCollection.children[0]) {
-      let foundValidHomography = false;
-
-      const image_b = elementToProcess.elt.querySelector(selector);
-      for (let n = mediaCollection.childElementCount - 1; n >= 0 && !foundValidHomography; n--) {
-        const mediaElement = mediaCollection.children[n];
-        if(id !== mediaElement.id) {
-          const image_a = mediaElement.querySelector(selector);
-
-          console.log("*align to B:" + image_b);
-          console.log("*align to B:" + image_b.parentElement.id);
-
-          console.log("*align from A:" + image_a);
-          console.log("*align from A:" + image_a.parentElement.id);
-
-          if(image_a &&image_b && !getImageTransformFromElement(image_b.parentElement)) {
-            Align_img(image_a, image_b);
-            if(h && !h.empty() && h.data64F) { 
-              const check = isReasonableHomography(Array.from(h.data64F));
-              console.log('Homography check:', check);
-              
-              if (check.valid) {
-                // homography from new image (a) to matching image (b)
-                const tab = [
-                  h.data64F[0], h.data64F[1], 0, h.data64F[2],
-                  h.data64F[3], h.data64F[4], 0, h.data64F[5],
-                  0, 0, 1, 0,
-                  h.data64F[6], h.data64F[7], 0, h.data64F[8]
-                ];
-                
-                const tAa = getImageTransformFromElement(image_a);
-                const tBb_i = invertMatrix4x4(getImageTransformFromElement(image_b));
-                const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tBb_i, tab), tAa);
-
-                setImageTransform(image_b.parentElement, tAB);
-                foundValidHomography = true;
-              } else {
-                console.warn('Rejecting homography:', check.reason);
-              }
-            }
-          }
-          }
-      }
-    } else {
-      setImageTransform(elementToProcess.elt, identityMatrix);
-    }
-  }
-    */
+  console.warn('No valid homography found for', image_b.parentElement.id);
 }
 
 // cache for converted images (HTMLImageElement -> p5.Graphics)
