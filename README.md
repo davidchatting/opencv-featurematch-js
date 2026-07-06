@@ -18,10 +18,10 @@ const result = alignImagePair(imageA, imageB, options);
 
 `alignImagePair` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImagePair` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
 
-Before calling either of the above, `await openCvLoaded()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`:
+Before calling either of the above, `await cvLoaded()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`:
 
 ```js
-await openCvLoaded();
+await cvLoaded();
 const result = alignImagePair(imageA, imageB, options);
 ```
 

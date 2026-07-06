@@ -24,8 +24,8 @@
 // runtime is ready": in practice it becomes available at the same instant as
 // every other bound class. cv is technically thenable, but awaiting it
 // directly never resolves - use this instead. Callers should `await
-// openCvLoaded()` once before their first call into this library.
-function openCvLoaded() {
+// cvLoaded()` once before their first call into this library.
+function cvLoaded() {
   return new Promise(resolve => {
     if (typeof cv !== 'undefined' && cv.Mat) {
       resolve();
