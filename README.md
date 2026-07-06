@@ -18,6 +18,13 @@ const result = alignImagePair(imageA, imageB, options);
 
 `alignImagePair` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImagePair` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
 
+Before calling either of the above, `await openCvLoaded()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`:
+
+```js
+await openCvLoaded();
+const result = alignImagePair(imageA, imageB, options);
+```
+
 The library is deliberately just feature matching and math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad); see [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
 
 A minified build, `opencv-featurematch-js.min.js`, is generated automatically by CI on every push to `main` (see `.github/workflows/build-min.yml`) and committed back alongside the source - both are available via jsDelivr:

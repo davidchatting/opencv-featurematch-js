@@ -15,28 +15,11 @@ let sceneToRefTransform = null;
 let croppedSceneImg = null;
 let croppedTransform = null;
 
-// opencv.js's own onload fires once its JS wrapper has loaded, not once its
-// WASM runtime has actually finished initializing - cv.DMatchVector (used by
-// Align_img) isn't callable until some time after that. cv is technically
-// thenable, but awaiting it directly never resolves; polling for a real
-// constructor to appear is the reliable option.
-function waitForOpenCv() {
-  return new Promise(resolve => {
-    (function poll() {
-      if (typeof cv !== 'undefined' && typeof cv.DMatchVector === 'function') {
-        resolve();
-      } else {
-        setTimeout(poll, 50);
-      }
-    })();
-  });
-}
-
 async function setup() {
   createCanvas(324 * 2 + GAP, 223, WEBGL);
   textureMode(NORMAL);
 
-  await waitForOpenCv();
+  await openCvLoaded();
 
   refImg = await loadImage('../../images/box.png');
   sceneImg = await loadImage('../../images/box_in_scene.png');
@@ -55,11 +38,11 @@ async function setup() {
   }
 }
 
-// waitForOpenCv only confirms cv.DMatchVector (a plain data structure) is
-// constructible - in practice its actual feature detectors (e.g. KAZE) can
-// still be a little behind that, briefly returning zero keypoints for a
-// perfectly good image. Retrying a few times a short delay apart clears this
-// reliably without a fragile fixed sleep guess.
+// openCvLoaded only confirms the WASM runtime itself is ready - in practice
+// its actual feature detectors (e.g. KAZE) can still be a little behind that,
+// briefly returning zero keypoints for a perfectly good image. Retrying a
+// few times a short delay apart clears this reliably without a fragile fixed
+// sleep guess.
 async function alignWithRetry(refCanvas, sceneCanvas, options, maxAttempts = 10, delayMs = 200) {
   let result;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
