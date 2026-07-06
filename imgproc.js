@@ -29,8 +29,10 @@ function applyTransform4x4(px, py, M) {
 }
 
 /**
- * Multiplies two 4x4 row-major flat matrices and returns the result.
- * Result = A * B (A applied first, then B)
+ * Multiplies two 4x4 row-major flat matrices and returns the literal matrix
+ * product A * B. applyTransform4x4 applies a matrix to a column vector
+ * (M * p), so to compose "apply A to a point first, then apply B to the
+ * result" - i.e. B * (A * p) - call multiplyMatrix4x4(B, A), not (A, B).
  * @param {Array} A - flat 16-element row-major 4x4 matrix
  * @param {Array} B - flat 16-element row-major 4x4 matrix
  * @returns {Array} - flat 16-element row-major 4x4 matrix (A * B)
