@@ -146,8 +146,7 @@ function Align_img(image_element_a, image_element_b) {
           }
       }
       if(good_matches.size() <= 3){
-          alert("Less than 4 good matches found! counter =" + good_matches.size() + " try changing distance.");
-          return;
+          throw new Error("Less than 4 good matches found! counter =" + good_matches.size() + " try changing distance.");
       }
   }
   else if(match_option == 1) { //knnMatch
@@ -170,8 +169,7 @@ function Align_img(image_element_a, image_element_b) {
           }
       }
       if(counter <= 3){
-          alert("Less than 4 good matches found! Counter=" + counter + " try changing distance %. It's currently " + knnDistance_option);
-          return;
+          throw new Error("Less than 4 good matches found! Counter=" + counter + " try changing distance %. It's currently " + knnDistance_option);
       }
       console.log("keeping ", counter, " points in good_matches vector out of ", matches.size(), " contained in this match vector:", matches);
       console.log("here are first 5 matches");
@@ -249,8 +247,7 @@ function Align_img(image_element_a, image_element_b) {
   h = cv.findHomography(mat1, mat2, cv.RANSAC, 3, findHomographyMask);
    if (h.empty())
    {
-       alert("homography matrix empty!");
-       return;
+       throw new Error("homography matrix empty!");
    }
    else{
       console.log("h:", h);
