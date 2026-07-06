@@ -31,9 +31,14 @@ function cvLoaded() {
       resolve();
       return;
     }
-    cv['onRuntimeInitialized'] = resolve;
-    // Fallback poll, in case onRuntimeInitialized already fired in the race
-    // between the check above and this assignment.
+    // cv may not exist as a global at all yet (opencv.js script tag still
+    // loading/executing) - only attach onRuntimeInitialized once it does.
+    if (typeof cv !== 'undefined') {
+      cv['onRuntimeInitialized'] = resolve;
+    }
+    // Fallback poll, in case cv doesn't exist yet above, or
+    // onRuntimeInitialized already fired in the race between the check
+    // above and this assignment.
     (function poll() {
       if (typeof cv !== 'undefined' && cv.Mat) resolve();
       else setTimeout(poll, 50);
