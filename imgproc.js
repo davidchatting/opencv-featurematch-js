@@ -263,7 +263,10 @@ function stripShear(transform) {
  * caller to read Align_img's side-effect globals (h, good_inlier_matches).
  * Synchronous - every OpenCV.js call inside Align_img (detectAndCompute,
  * knnMatch, findHomography) is a synchronous WASM operation, nothing here
- * is ever awaited.
+ * is ever awaited. Align_img throws (rather than alert()ing) if it can't
+ * find enough matches or a homography - caught here and folded into the
+ * same { valid: false, reason } shape as every other failure case, so
+ * callers only ever need to check .valid, never wrap this in a try/catch.
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
@@ -274,7 +277,11 @@ function alignImagePair(imageA, imageB, options = {}) {
     return { valid: false, transform: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
   }
 
-  Align_img(imageA, imageB);
+  try {
+    Align_img(imageA, imageB);
+  } catch (err) {
+    return { valid: false, transform: null, inliers: 0, reason: err.message };
+  }
 
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
