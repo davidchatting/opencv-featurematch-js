@@ -27,7 +27,7 @@ jobs:
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- opencv-featurematch-js.min.js; then
+          if [ -z "$(git status --porcelain -- opencv-featurematch-js.min.js)" ]; then
             echo "No changes to minified bundle"
             exit 0
           fi
