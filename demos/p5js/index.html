@@ -6,8 +6,7 @@
     <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv.js" onload="console.log('OpenCV Ready');"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidchatting/shimage@1.2.0/shimage.js"></script>
-    <script src="../../align_img.js"></script>
-    <script src="../../imgproc.js"></script>
+    <script src="../../opencv-featurematch-js.js"></script>
     <script src="sketch.js"></script>
     <style>
       body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
@@ -16,7 +15,7 @@
   </head>
   <body>
     <h1>opencv-featurematch: p5.js demo</h1>
-    <p>Loads two images, aligns them once with <code>alignImagePair()</code> (from <code>imgproc.js</code>), then uses the resulting transform to rectify the scene photo so the box appears head-on (left), drawn with <a href="https://github.com/davidchatting/shimage">shimage.js</a>'s <code>drawProjectedImage()</code>. The original reference image (right) is shown for comparison. No EXIF, camera fly-through, or playback timeline (see the <a href="https://github.com/davidchatting-bot/RugbySynth">RugbySynth</a> app for that).</p>
+    <p>Loads two images, aligns them once with <code>alignImagePair()</code>, then uses the resulting transform to rectify the scene photo so the box appears head-on (left), drawn with <a href="https://github.com/davidchatting/shimage">shimage.js</a>'s <code>drawProjectedImage()</code>. The original reference image (right) is shown for comparison. No EXIF, camera fly-through, or playback timeline (see the <a href="https://github.com/davidchatting-bot/RugbySynth">RugbySynth</a> app for that).</p>
     <main></main>
   </body>
 </html>
