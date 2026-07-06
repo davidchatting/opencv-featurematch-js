@@ -407,19 +407,4 @@ console.log("   depth:" + depth + " colorspace:" + baseline_colorspace + " type:
 return;
 }
 
-function cvMatToP5Image(mat, image) {
-  //mat to canvas
-  let tempCanvas = document.createElement('canvas');
-  tempCanvas.id = 'tempCanvas';
-  tempCanvas.classList.add('hide');
-  document.body.appendChild(tempCanvas);
-  
-  let resultSize = mat.size();
-  tempCanvas.width = resultSize.width;
-  tempCanvas.height = resultSize.height
-  
-  cv.imshow('tempCanvas', mat);
-  
-  canvasToP5Image(tempCanvas, image, { flipX: false, flipY: false });
-  tempCanvas.remove();
-}
+// cvMatToP5Image now lives in shimage.js

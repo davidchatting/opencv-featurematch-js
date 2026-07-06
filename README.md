@@ -9,7 +9,7 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 Two files:
 
 - **`align_img.js`** - the core feature-matching/homography computation (`Align_img`), adapted from the tutorial above.
-- **`imgproc.js`** - a layer on top: matrix math, homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), low-res/mask generation, and the clean two-image primitive most consumers actually want:
+- **`imgproc.js`** - pure alignment math on top: 4x4 matrix helpers, homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
 
 ```js
 const result = alignImagePair(imageA, imageB, options);
@@ -18,7 +18,7 @@ const result = alignImagePair(imageA, imageB, options);
 
 `alignImagePair` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImagePair` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
 
-Multi-image sequencing - which candidate to try, when to stop searching - is deliberately *not* part of this library; that's an application-level policy. See [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on top of this library (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
+`imgproc.js` is deliberately just the math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad); see [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
 
 ## Demos
 
@@ -32,7 +32,7 @@ No p5.js, no canvas rendering - two `<img>` elements and a direct call to `align
 
 ### p5.js demo
 
-Aligns two images, then uses the resulting transform to rectify a photo so the object in it appears head-on, via `drawProjectedImage()`.
+Aligns two images, then uses the resulting transform to rectify a photo so the object in it appears head-on, via [shimage.js](https://github.com/davidchatting/shimage)'s `drawProjectedImage()`.
 
 [**Live demo**](https://davidchatting.github.io/opencv-featurematch/demos/p5js/) · [source](demos/p5js/index.html)
 
