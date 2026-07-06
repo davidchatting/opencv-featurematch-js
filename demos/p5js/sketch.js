@@ -19,7 +19,7 @@ async function setup() {
   createCanvas(324 * 2 + GAP, 223, WEBGL);
   textureMode(NORMAL);
 
-  await openCvLoaded();
+  await cvLoaded();
 
   refImg = await loadImage('../../images/box.png');
   sceneImg = await loadImage('../../images/box_in_scene.png');
@@ -38,7 +38,7 @@ async function setup() {
   }
 }
 
-// openCvLoaded only confirms the WASM runtime itself is ready - in practice
+// cvLoaded only confirms the WASM runtime itself is ready - in practice
 // its actual feature detectors (e.g. KAZE) can still be a little behind that,
 // briefly returning zero keypoints for a perfectly good image. Retrying a
 // few times a short delay apart clears this reliably without a fragile fixed
