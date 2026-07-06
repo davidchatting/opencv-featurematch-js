@@ -51,6 +51,12 @@ Aligns two images, then uses the resulting transform to rectify a photo so the o
 
 ![p5.js demo screenshot](demos/screenshots/p5js-demo.png)
 
+### p5.js editor sketch
+
+A minimal, editable sketch showing `openCvLoaded()` + `alignImagePair()` in the smallest amount of code, loaded straight from the CDN.
+
+[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
