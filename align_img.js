@@ -9,7 +9,7 @@ var good_matches_global = null; // store matches so draw() can render them
 function Align_img(image_element_a, image_element_b) {
    if (!image_element_a || !image_element_b) return null;
 
-   //Based on: https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/
+   //Based on: https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/ (original now dead)
    // reset previous state so repeated presses don't append results
    points1 = [];
    points2 = [];
