@@ -277,9 +277,8 @@ function getImageTransformFromElement(element, traverse = false) {
       result = JSON.parse(element.getAttribute('data-transform'));
     }
     catch (e) {
-      result = null;
     }
-    if (!result && traverse) result = b;
+    if (result) result = multiplyMatrix4x4(b, result);
   }
 
   return result;
