@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>opencv-featurematch - p5.js demo</title>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv.js" onload="console.log('OpenCV Ready');"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.10.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/shimage@1.1.1/shimage.js"></script>
+    <script src="../../align_img.js"></script>
+    <script src="../../imgproc.js"></script>
+    <script src="sketch.js"></script>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
+      canvas { border: 1px solid #ccc; max-width: 100%; }
+    </style>
+  </head>
+  <body>
+    <h1>opencv-featurematch: p5.js demo</h1>
+    <p>Loads two images, aligns them once with <code>alignImagePair()</code>, then uses the resulting transform to rectify the scene photo so the box appears head-on (left), drawn with <code>drawProjectedImage()</code> - both from <code>imgproc.js</code>. The original reference image (right) is shown for comparison. No EXIF, camera fly-through, or playback timeline (see the <a href="https://github.com/davidchatting-bot/RugbySynth">RugbySynth</a> app for that).</p>
+    <main></main>
+  </body>
+</html>

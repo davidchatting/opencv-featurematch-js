@@ -7,6 +7,8 @@ var h;
 var good_matches_global = null; // store matches so draw() can render them
 
 function Align_img(image_element_a, image_element_b) {
+   if (!image_element_a || !image_element_b) return null;
+
    //Based on: https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/
    // reset previous state so repeated presses don't append results
    points1 = [];
@@ -27,14 +29,22 @@ function Align_img(image_element_a, image_element_b) {
   //im1 is the image we are trying to line up correctly
   
   let resultSize = im2.size();
-  inputImageB = createImage(resultSize.width, resultSize.height);
-  cvMatToP5Image(im2, inputImageB);
-  
+  // inputImageA/inputImageB are only used by a consuming sketch's optional
+  // debug preview (e.g. drawMatchesOverlay) - createImage is a p5.js global,
+  // so this is skipped entirely when p5.js isn't loaded (a plain-DOM consumer
+  // calling this for its transform/inlier result has no use for them anyway).
+  if (typeof createImage === 'function') {
+    inputImageB = createImage(resultSize.width, resultSize.height);
+    cvMatToP5Image(im2, inputImageB);
+  }
+
   let im1 = cv.imread(image_element_b);
-  
-  resultSize = im1.size();
-  inputImageA = createImage(resultSize.width, resultSize.height);
-  cvMatToP5Image(im1, inputImageA);
+
+  if (typeof createImage === 'function') {
+    resultSize = im1.size();
+    inputImageA = createImage(resultSize.width, resultSize.height);
+    cvMatToP5Image(im1, inputImageA);
+  }
 
   getMatStats(im1, "original image to line up");
 

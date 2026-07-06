@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>opencv-featurematch - plain DOM demo</title>
+    <script>
+      let cvReady = false;
+      let domReady = false;
+
+      function tryEnableButton() {
+        if (!cvReady || !domReady) return;
+        const button = document.getElementById('alignButton');
+        button.disabled = false;
+        button.textContent = 'Align';
+      }
+
+      function onOpenCvReady() {
+        console.log('OpenCV Ready');
+        cvReady = true;
+        tryEnableButton();
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        domReady = true;
+        tryEnableButton();
+        document.getElementById('alignButton').addEventListener('click', () => {
+          const imageA = document.getElementById('imageA');
+          const imageB = document.getElementById('imageB');
+          const result = alignImagePair(imageA, imageB, { maxPerspective: 0.01, maxScale: 3 });
+          document.getElementById('output').textContent = JSON.stringify(result, null, 2);
+        });
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv.js" onload="onOpenCvReady();"></script>
+    <script src="../../align_img.js"></script>
+    <script src="../../imgproc.js"></script>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
+      /* No size constraint on the images themselves - cv.imread() reads an
+         <img> element's CSS-rendered size, not its naturalWidth/Height, so
+         shrinking them here would silently feed downscaled pixels into
+         alignImagePair(). The source images are already small. */
+      img { border: 1px solid #ccc; vertical-align: top; margin-right: 1rem; }
+      pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; }
+      button { font-size: 1rem; padding: 0.5rem 1rem; margin: 1rem 0; }
+    </style>
+  </head>
+  <body>
+    <h1>opencv-featurematch: plain DOM demo</h1>
+    <p>No p5.js, no canvas rendering - just two &lt;img&gt; elements and a direct call to <code>alignImagePair()</code>.</p>
+    <p>These are the classic OpenCV tutorial images, photographed at a real perspective angle rather than the near-planar bursts <code>isReasonableHomography</code>'s defaults were tuned for - so this demo relaxes <code>maxPerspective</code> to show the thresholds are configurable per call.</p>
+
+    <img id="imageA" src="../../images/box.png" alt="reference image" />
+    <img id="imageB" src="../../images/box_in_scene.png" alt="image to align" />
+
+    <div>
+      <button id="alignButton" disabled>Loading OpenCV...</button>
+    </div>
+
+    <pre id="output">Result will appear here.</pre>
+  </body>
+</html>
