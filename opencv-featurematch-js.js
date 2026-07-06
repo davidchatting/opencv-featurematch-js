@@ -17,6 +17,30 @@
  * p5.js/WEBGL rendering side.
  */
 
+// opencv.js's own <script onload> fires once its JS wrapper has loaded, not
+// once its WASM runtime has actually finished initializing - calling
+// anything here (Align_img, alignImagePair) before that finishes throws
+// "undefined is not a constructor". cv.Mat is a reliable proxy for "the
+// runtime is ready": in practice it becomes available at the same instant as
+// every other bound class. cv is technically thenable, but awaiting it
+// directly never resolves - use this instead. Callers should `await
+// waitForOpenCv()` once before their first call into this library.
+function waitForOpenCv() {
+  return new Promise(resolve => {
+    if (typeof cv !== 'undefined' && cv.Mat) {
+      resolve();
+      return;
+    }
+    cv['onRuntimeInitialized'] = resolve;
+    // Fallback poll, in case onRuntimeInitialized already fired in the race
+    // between the check above and this assignment.
+    (function poll() {
+      if (typeof cv !== 'undefined' && cv.Mat) resolve();
+      else setTimeout(poll, 50);
+    })();
+  });
+}
+
 var canvas;
 var inputImageA = null, inputImageB = null;
 var points1 = [];
