@@ -158,14 +158,4 @@ function draw() {
   pop();
 }
 
-function applyTransform4x4(px, py, M) {
-  // strict: accept only flat row-major 4x4 arrays (length 16)
-  if (!Array.isArray(M) || M.length !== 16) return [px, py];
-
-  const X = M[0] * px + M[1] * py + M[2] * 0 + M[3];
-  const Y = M[4] * px + M[5] * py + M[6] * 0 + M[7];
-  const W = M[12] * px + M[13] * py + M[14] * 0 + M[15];
-
-  if (!isFinite(W) || Math.abs(W) < 1e-12) return [X, Y];
-  return [X / W, Y / W];
-}
+// applyTransform4x4 now lives in imgproc.js
