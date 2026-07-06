@@ -1,8 +1,10 @@
 // imgproc.js - generic image alignment/compositing helpers for opencv-featurematch
 // Extracted from the segmention branch: matrix math, homography validation/cleanup,
-// low-res/mask generation, and the multi-image alignment search. No EXIF, camera,
-// or playback logic here - that's application-specific and stays in each app's own
-// sketch.js.
+// low-res/mask generation, and a clean two-image alignment primitive
+// (alignImagePair). No EXIF, camera, playback, or multi-image search logic here -
+// that's application-specific and stays in each app's own sketch.js (e.g. which
+// candidate to search first, when to stop, is a policy decision for the app's
+// own multi-image search, not this library).
 //
 // Depends on align_img.js being loaded first (uses its globals: Align_img, h,
 // good_inlier_matches). generateMask() expects the including sketch to define a
@@ -15,13 +17,6 @@ const identityMatrix = [
   0, 0, 1, 0,
   0, 0, 0, 1
 ];
-
-// Once a candidate match clears this many RANSAC inliers, stop searching further
-// (temporally-nearer) candidates in processHomography - an early exit to avoid an
-// O(n^2) alignment search across the whole sequence when the nearest neighbour is
-// already a confident match, which is true for the large majority of burst-sequence
-// pairs. Override via processHomography's own options argument.
-const EARLY_EXIT_INLIER_THRESHOLD = 50;
 
 function applyTransform4x4(px, py, M) {
   // strict: accept only flat row-major 4x4 arrays (length 16)
@@ -489,85 +484,40 @@ function drawProjectedImage(srcImg, x, y, Hproj, zDepth = 0) {
 }
 
 /**
- * Aligns the newest image in a '.background'-tagged media collection against
- * the best-matching (by RANSAC inlier count) previously-aligned image, trying
- * candidates nearest-in-DOM-order first and stopping early once a confident
- * match is found. Writes the resulting 4x4 transform onto the new image's
- * container via setImageTransform.
- * @param {string} id - unused, kept for call-site compatibility
- * @param {Object} options - { earlyExitInlierThreshold } to override the default
+ * Aligns two images and returns the result directly, instead of forcing the
+ * caller to read Align_img's side-effect globals (h, good_inlier_matches).
+ * Synchronous - every OpenCV.js call inside Align_img (detectAndCompute,
+ * knnMatch, findHomography) is a synchronous WASM operation, nothing here
+ * is ever awaited.
+ * @param {HTMLImageElement} imageA - reference image
+ * @param {HTMLImageElement} imageB - image to align onto imageA
+ * @param {Object} options - passed through to isReasonableHomography
+ * @returns {{valid: boolean, transform: (Array|null), inliers: number, reason: string}}
  */
-function processHomography(id, options = {}) {
-  const { earlyExitInlierThreshold = EARLY_EXIT_INLIER_THRESHOLD } = options;
-
-  const selector = '.background';
-  const mediaCollection = select('#media')?.elt.querySelectorAll(selector);
-  if (!mediaCollection || mediaCollection.length === 0) return;
-
-  const n = mediaCollection.length;
-
-  if (n === 1) {
-    setImageTransform(mediaCollection[0].parentElement, identityMatrix);
-    return;
+function alignImagePair(imageA, imageB, options = {}) {
+  if (!imageA || !imageB) {
+    return { valid: false, transform: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
   }
 
-  // The newest image is the last one
-  const image_b = mediaCollection[n - 1];
+  Align_img(imageA, imageB);
 
-  // Skip if already aligned
-  if (getImageTransformFromElement(image_b.parentElement)) return;
+  const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
-  // Try all previously aligned images and pick the best match by inlier count
-  let bestInliers = 0;
-  let bestT0B = null;
-  let bestMatchId = null;
-
-  for (let i = n - 2; i >= 0; i--) {
-    const image_a = mediaCollection[i];
-    const t0A = getImageTransformFromElement(image_a.parentElement);
-
-    // Skip images that haven't been aligned yet
-    if (!t0A) continue;
-
-    Align_img(image_a, image_b);
-
-    const inlierCount = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
-
-    if (h && !h.empty() && h.data64F) {
-      const check = isReasonableHomography(Array.from(h.data64F));
-
-      if (check.valid && inlierCount > bestInliers) {
-        const tab = [
-          h.data64F[0], h.data64F[1], 0, h.data64F[2],
-          h.data64F[3], h.data64F[4], 0, h.data64F[5],
-          0, 0, 1, 0,
-          h.data64F[6], h.data64F[7], 0, h.data64F[8]
-        ];
-
-        const tAa = getImageTransformFromElement(image_a);
-        const tBb = getImageTransformFromElement(image_b);
-        const tBb_i = invertMatrix4x4(tBb);
-        const tAB = multiplyMatrix4x4(multiplyMatrix4x4(tAa, tab), tBb_i);
-
-        bestT0B = multiplyMatrix4x4(t0A, tAB);
-        bestInliers = inlierCount;
-        bestMatchId = image_a.parentElement.id;
-
-        // Candidates are tried nearest-in-time first (i counts down from n-2),
-        // so a confident match here is very likely the best one available -
-        // stop searching rather than aligning against every earlier frame too.
-        if (bestInliers >= earlyExitInlierThreshold) {
-          break;
-        }
-      } else if (!check.valid) {
-        console.warn('Rejecting homography with', image_a.parentElement.id, ':', check.reason);
-      }
-    }
+  if (!h || h.empty() || !h.data64F) {
+    return { valid: false, transform: null, inliers, reason: 'No homography found' };
   }
 
-  if (bestT0B) {
-    setImageTransform(image_b.parentElement, bestT0B);
-  } else {
-    console.warn('No valid homography found for', image_b.parentElement.id);
+  const check = isReasonableHomography(Array.from(h.data64F), options);
+  if (!check.valid) {
+    return { valid: false, transform: null, inliers, reason: check.reason };
   }
+
+  const transform = [
+    h.data64F[0], h.data64F[1], 0, h.data64F[2],
+    h.data64F[3], h.data64F[4], 0, h.data64F[5],
+    0, 0, 1, 0,
+    h.data64F[6], h.data64F[7], 0, h.data64F[8]
+  ];
+
+  return { valid: true, transform, inliers, reason: check.reason };
 }
