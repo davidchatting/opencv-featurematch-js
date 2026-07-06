@@ -1,4 +1,4 @@
-# opencv-featurematch
+# opencv-featurematch-js
 
 A small JavaScript library for feature-based image alignment in the browser, built on [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html). Given two images, it finds matching features (ORB/KAZE + RANSAC), computes a homography between them, and hands back a transform you can use to warp one image onto the other.
 
@@ -26,7 +26,7 @@ const result = alignImagePair(imageA, imageB, options);
 
 No p5.js, no canvas rendering - two `<img>` elements and a direct call to `alignImagePair()`.
 
-[**Live demo**](https://davidchatting.github.io/opencv-featurematch/demos/dom/) · [source](demos/dom/index.html)
+[**Live demo**](https://davidchatting.github.io/opencv-featurematch-js/demos/dom/) · [source](demos/dom/index.html)
 
 ![Plain DOM demo screenshot](demos/screenshots/dom-demo.png)
 
@@ -34,7 +34,7 @@ No p5.js, no canvas rendering - two `<img>` elements and a direct call to `align
 
 Aligns two images, then uses the resulting transform to rectify a photo so the object in it appears head-on, via [shimage.js](https://github.com/davidchatting/shimage)'s `drawProjectedImage()`.
 
-[**Live demo**](https://davidchatting.github.io/opencv-featurematch/demos/p5js/) · [source](demos/p5js/index.html)
+[**Live demo**](https://davidchatting.github.io/opencv-featurematch-js/demos/p5js/) · [source](demos/p5js/index.html)
 
 ![p5.js demo screenshot](demos/screenshots/p5js-demo.png)
 
