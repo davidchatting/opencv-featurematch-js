@@ -56,10 +56,17 @@ function draw() {
 `alignImages(imageA, imageB, options)` computes the alignment of the images, a 3D transform that will map `imageA`'s own coordinate space into `imageB`'s directly. Internally, the OpenCV pipeline detects KAZE features in both images, matches them with a kNN matcher, keeps the confident matches, and fits a homography between them with `cv.findHomography` (RANSAC).
 
 The returned result object:
-- `valid` - whether the fitted homography passed the thresholds above
+- `valid` - whether the fitted homography passed the thresholds set by `options` below
 - `transform` - a flat 16-element **column-major** 4x4 matrix (the same layout WebGL/OpenGL use natively). Populated as soon as any homography is found at all, even on an otherwise-invalid result - only `null` if no homography was found
 - `inlierMatches` / `outlierMatches` - the underlying point correspondences, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates; `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected
 - `reason` - why an invalid result was rejected (or `'OK'`)
+
+`options` passed to `alignImages`:
+- `maxRotationDeg` - max allowed rotation in degrees (default: unbounded)
+- `maxScale` - max allowed scale factor, n - the homography can be up to nx bigger or nx smaller (default `3`)
+- `maxShear` - max allowed shear (default `0.5`)
+- `maxPerspective` - max allowed perspective distortion (default `0.01`)
+- `precision` - decimal places to round `inlierMatches`/`outlierMatches` coordinates to (default `0`, i.e. whole pixels)
 
 index.html
 <!-- p5js-sync:index.html -->
