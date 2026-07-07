@@ -526,7 +526,7 @@ function multiplyMatrix4x4(A, B) {
 
 /**
  * Inverts a flat 6-element [a, b, c, d, e, f] 2D affine matrix - the same
- * shape alignImagePair's matrix2D uses, and the one both the canvas API's
+ * shape alignImagePair's transform2D uses, and the one both the canvas API's
  * setTransform() and p5.js's applyMatrix() (2D mode) expect:
  *   | a c e |
  *   | b d f |
@@ -761,28 +761,28 @@ function stripShear(transform) {
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
- * @returns {{valid: boolean, transform: (Array|null), matrix2D: (Array|null), inliers: number, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, matrix2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, matrix2D: null, inliers: 0, reason: err.message };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: err.message };
   }
 
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, matrix2D: null, inliers, reason: 'No homography found' };
+    return { valid: false, transform: null, transform2D: null, inliers, reason: 'No homography found' };
   }
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
   if (!check.valid) {
-    return { valid: false, transform: null, matrix2D: null, inliers, reason: check.reason };
+    return { valid: false, transform: null, transform2D: null, inliers, reason: check.reason };
   }
 
   const transform = [
@@ -797,7 +797,7 @@ function alignImagePair(imageA, imageB, options = {}) {
   // expect. Perspective terms (h.data64F[6], [7]) are dropped, same as
   // to2dAffine(transform) would give - isReasonableHomography's own default
   // maxPerspective threshold already keeps those small for a valid result.
-  const matrix2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
+  const transform2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
 
-  return { valid: true, transform, matrix2D, inliers, reason: check.reason };
+  return { valid: true, transform, transform2D, inliers, reason: check.reason };
 }

@@ -13,19 +13,19 @@ Everything ships as a single file, **`opencv-featurematch-js.js`**:
 
 ```js
 const result = alignImagePair(imageA, imageB, options);
-// -> { valid: true, transform: [16 numbers, row-major 4x4], matrix2D: [a, b, c, d, e, f], inliers: 26, reason: 'OK' }
+// -> { valid: true, transform: [16 numbers, row-major 4x4], transform2D: [a, b, c, d, e, f], inliers: 26, reason: 'OK' }
 ```
 
 `alignImagePair` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImagePair` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
 
-`transform` and `matrix2D` are the same homography in two shapes: `transform` is padded to a flat 16-element row-major 4x4 (for `drawProjectedImage`'s 3D/WEBGL quad warp and the other 4x4 matrix helpers), `matrix2D` is the flat 6-element `[a, b, c, d, e, f]` affine form that both the canvas API's `setTransform()` and p5.js's `applyMatrix()` (2D mode) expect directly - equivalent to calling `to2dAffine(transform)` yourself, just already done for you. Perspective terms are dropped in `matrix2D` (`isReasonableHomography`'s own default `maxPerspective` threshold already keeps those small for any result that comes back `valid`). Invert it with `invertMatrix2D`, not `invertMatrix4x4`.
+`transform` and `transform2D` are the same homography in two shapes: `transform` is padded to a flat 16-element row-major 4x4 (for `drawProjectedImage`'s 3D/WEBGL quad warp and the other 4x4 matrix helpers), `transform2D` is the flat 6-element `[a, b, c, d, e, f]` affine form that both the canvas API's `setTransform()` and p5.js's `applyMatrix()` (2D mode) expect directly - equivalent to calling `to2dAffine(transform)` yourself, just already done for you. Perspective terms are dropped in `transform2D` (`isReasonableHomography`'s own default `maxPerspective` threshold already keeps those small for any result that comes back `valid`). Invert it with `invertMatrix2D`, not `invertMatrix4x4`.
 
 Before calling either of the above, `await cvLoaded()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`:
 
 ```js
 await cvLoaded();
 const result = alignImagePair(imageA, imageB, options);
-applyMatrix(result.matrix2D);
+applyMatrix(result.transform2D);
 ```
 
 `to2dAffine` still exists for converting any other 4x4 matrix (e.g. one composed via `multiplyMatrix4x4` outside of `alignImagePair`) into the same 6-element form:
