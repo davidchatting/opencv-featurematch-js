@@ -95,7 +95,7 @@ A minimised version of *opencv-featurematch-js*, built automatically via [build.
 ```
 https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@latest/opencv-featurematch-js.min.js
 ```
-*opencv-featurematch-js* depends on both *opencv.js* and *shimage.js*, the example requires *p5.js*.
+*opencv-featurematch-js* depends on both *opencv.js* and *shimage.js*, and the example requires *p5.js*.
 
 ## Syncing with the p5.js Editor
 
