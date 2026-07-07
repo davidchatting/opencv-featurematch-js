@@ -31,9 +31,14 @@ function cvLoaded() {
       resolve();
       return;
     }
-    cv['onRuntimeInitialized'] = resolve;
-    // Fallback poll, in case onRuntimeInitialized already fired in the race
-    // between the check above and this assignment.
+    // cv may not exist as a global at all yet (opencv.js script tag still
+    // loading/executing) - only attach onRuntimeInitialized once it does.
+    if (typeof cv !== 'undefined') {
+      cv['onRuntimeInitialized'] = resolve;
+    }
+    // Fallback poll, in case cv doesn't exist yet above, or
+    // onRuntimeInitialized already fired in the race between the check
+    // above and this assignment.
     (function poll() {
       if (typeof cv !== 'undefined' && cv.Mat) resolve();
       else setTimeout(poll, 50);
@@ -472,6 +477,23 @@ function applyTransform4x4(px, py, M) {
 }
 
 /**
+ * Converts a flat 16-element row-major 4x4 matrix into the flat 6-element
+ * array [a, b, c, d, e, f] that both the HTML5 canvas API's setTransform()
+ * and p5.js's applyMatrix() (2D mode) expect, where:
+ *   | a c e |
+ *   | b d f |
+ *   | 0 0 1 |
+ * Only the matrix's 2D affine part (rotation/scale/shear/translation in the
+ * XY plane) survives - any Z or perspective terms are dropped.
+ * @param {Array} M - flat 16-element row-major 4x4 matrix
+ * @returns {Array|null} - [a, b, c, d, e, f], or null if M isn't a flat 16-element array
+ */
+function to2dAffine(M) {
+  if (!Array.isArray(M) || M.length !== 16) return null;
+  return [M[0], M[4], M[1], M[5], M[3], M[7]];
+}
+
+/**
  * Multiplies two 4x4 row-major flat matrices and returns the literal matrix
  * product A * B. applyTransform4x4 applies a matrix to a column vector
  * (M * p), so to compose "apply A to a point first, then apply B to the
@@ -735,28 +757,28 @@ function stripShear(transform) {
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
- * @returns {{valid: boolean, transform: (Array|null), inliers: number, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, inliers: 0, reason: err.message };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: err.message };
   }
 
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, inliers, reason: 'No homography found' };
+    return { valid: false, transform: null, transform2D: null, inliers, reason: 'No homography found' };
   }
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
   if (!check.valid) {
-    return { valid: false, transform: null, inliers, reason: check.reason };
+    return { valid: false, transform: null, transform2D: null, inliers, reason: check.reason };
   }
 
   const transform = [
@@ -766,5 +788,9 @@ function alignImagePair(imageA, imageB, options = {}) {
     h.data64F[6], h.data64F[7], 0, h.data64F[8]
   ];
 
-  return { valid: true, transform, inliers, reason: check.reason };
+  // The raw 3x3 homography, row-major - the plain 2D form (no Z-row/column
+  // padding for drawProjectedImage's WEBGL quad warp).
+  const transform2D = Array.from(h.data64F);
+
+  return { valid: true, transform, transform2D, inliers, reason: check.reason };
 }
