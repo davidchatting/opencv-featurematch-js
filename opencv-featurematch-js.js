@@ -27,8 +27,10 @@
 // runtime is ready": in practice it becomes available at the same instant as
 // every other bound class. cv is technically thenable, but awaiting it
 // directly never resolves - use this instead. Callers should `await
-// cvLoaded()` once before their first call into this library.
-function cvLoaded() {
+// featurematchReady()` (which covers this and shimage.js both) rather than
+// this directly, unless they've already independently confirmed shimage.js
+// is ready.
+function cvReady() {
   return new Promise(resolve => {
     if (typeof cv !== 'undefined' && cv.Mat) {
       resolve();
@@ -47,6 +49,27 @@ function cvLoaded() {
       else setTimeout(poll, 50);
     })();
   });
+}
+
+// This library depends on shimage.js (cvMatToP5Image, applyTransform4x4)
+// being loaded too - resolves once both are actually defined as globals.
+function shimageReady() {
+  return new Promise(resolve => {
+    (function poll() {
+      if (typeof cvMatToP5Image === 'function' && typeof applyTransform4x4 === 'function') {
+        resolve();
+      } else {
+        setTimeout(poll, 50);
+      }
+    })();
+  });
+}
+
+// Waits for both dependencies (OpenCV.js and shimage.js) at once - call
+// this rather than cvReady()/shimageReady() individually unless you have a
+// specific reason to wait on just one of them.
+function featurematchReady() {
+  return Promise.all([cvReady(), shimageReady()]).then(() => {});
 }
 
 var canvas;
