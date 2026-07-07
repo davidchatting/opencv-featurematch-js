@@ -3,8 +3,6 @@ name: Build
 on:
   push:
     branches: [main]
-    paths:
-      - 'opencv-featurematch-js.js'
   workflow_dispatch:
 
 permissions:
@@ -47,11 +45,38 @@ jobs:
 
           rm -rf p5js-tmp p5js-demo.zip
 
+      - name: Sync README code blocks from p5js/
+        run: |
+          python3 <<'PYEOF'
+          import re
+
+          def sync_block(readme, marker, file_path, lang):
+              with open(file_path) as f:
+                  content = f.read().rstrip('\n')
+              pattern = re.compile(
+                  r'(<!-- p5js-sync:' + re.escape(marker) + r' -->\n```' + lang + r'\n).*?(\n```\n<!-- /p5js-sync:' + re.escape(marker) + r' -->)',
+                  re.DOTALL
+              )
+              # Replacement passed as a function, not a string, so content
+              # containing regex backreference-like sequences (e.g. "\1")
+              # is inserted literally rather than being reinterpreted.
+              return pattern.sub(lambda m: m.group(1) + content + m.group(2), readme)
+
+          with open('README.md') as f:
+              readme = f.read()
+
+          readme = sync_block(readme, 'index.html', 'p5js/index.html', 'html')
+          readme = sync_block(readme, 'sketch.js', 'p5js/sketch.js', 'js')
+
+          with open('README.md', 'w') as f:
+              f.write(readme)
+          PYEOF
+
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add opencv-featurematch-js.min.js p5js
+          git add opencv-featurematch-js.min.js p5js README.md
           if git diff --cached --quiet; then
             echo "No changes"
             exit 0
