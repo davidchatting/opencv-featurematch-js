@@ -48,7 +48,10 @@ Pin to a version tag (`@0.4.1`) rather than `@main` so updates here can't silent
 
 A minimal, editable sketch showing `featurematchReady()` + `alignImages()` in the smallest amount of code, loaded straight from the CDN.
 
-[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR) - kept in sync automatically by `build.yml` on every push, both below and in [`p5js/`](p5js).
+<!-- p5js-sync:homepage -->
+[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
+<!-- /p5js-sync:homepage -->
+ - kept in sync automatically by `build.yml` on every push (from `package.json`'s `homepage` field), both above and in [`p5js/`](p5js).
 
 <!-- p5js-sync:index.html -->
 ```html
