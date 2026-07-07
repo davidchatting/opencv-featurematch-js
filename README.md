@@ -8,7 +8,7 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 
 ## Example
 
-This example is written with **p5.js** and this example can be <!-- p5js-sync:homepage -->[run in the browser](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->.
+This example is written with **p5.js** and can be <!-- p5js-sync:homepage -->[run in the browser](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->.
 
 ### sketch.js
 <!-- p5js-sync:sketch.js -->
