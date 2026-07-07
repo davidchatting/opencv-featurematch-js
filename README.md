@@ -44,27 +44,9 @@ A minified build, `opencv-featurematch-js.min.js`, is generated automatically by
 https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@main/opencv-featurematch-js.min.js
 ```
 
-## Demos
+## Demo
 
-### Plain DOM demo
-
-No p5.js, no canvas rendering - two `<img>` elements and a direct call to `alignImagePair()`.
-
-[**Live demo**](https://davidchatting.github.io/opencv-featurematch-js/demos/dom/) · [source](demos/dom/index.html)
-
-![Plain DOM demo screenshot](demos/screenshots/dom-demo.png)
-
-### p5.js demo
-
-Aligns two images, then uses the resulting transform to rectify a photo so the object in it appears head-on, via [shimage.js](https://github.com/davidchatting/shimage)'s `drawProjectedImage()`.
-
-[**Live demo**](https://davidchatting.github.io/opencv-featurematch-js/demos/p5js/) · [source](demos/p5js/index.html)
-
-![p5.js demo screenshot](demos/screenshots/p5js-demo.png)
-
-### p5.js editor sketch
-
-A minimal, editable sketch showing `openCvLoaded()` + `alignImagePair()` in the smallest amount of code, loaded straight from the CDN.
+A minimal, editable sketch showing `cvLoaded()` + `alignImagePair()` in the smallest amount of code, loaded straight from the CDN.
 
 [**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
 
