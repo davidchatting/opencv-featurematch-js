@@ -797,29 +797,28 @@ function getMatchPoints() {
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
- * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, inlierMatches: Array, outlierMatches: Array, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inlierMatches: Array, outlierMatches: Array, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, transform2D: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: err.message };
+    return { valid: false, transform: null, transform2D: null, inlierMatches: [], outlierMatches: [], reason: err.message };
   }
 
-  const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
   const { inlierMatches, outlierMatches } = getMatchPoints();
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: 'No homography found' };
+    return { valid: false, transform: null, transform2D: null, inlierMatches, outlierMatches, reason: 'No homography found' };
   }
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
   if (!check.valid) {
-    return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: check.reason };
+    return { valid: false, transform: null, transform2D: null, inlierMatches, outlierMatches, reason: check.reason };
   }
 
   const transform = [
@@ -836,5 +835,5 @@ function alignImagePair(imageA, imageB, options = {}) {
   // maxPerspective threshold already keeps those small for a valid result.
   const transform2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
 
-  return { valid: true, transform, transform2D, inliers, inlierMatches, outlierMatches, reason: check.reason };
+  return { valid: true, transform, transform2D, inlierMatches, outlierMatches, reason: check.reason };
 }
