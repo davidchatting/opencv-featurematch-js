@@ -32,13 +32,20 @@ jobs:
           mkdir -p p5js-tmp
           python3 -c "import zipfile; zipfile.ZipFile('p5js-demo.zip').extractall('p5js-tmp')"
 
-          # Only the actual project files - not the CDN libraries (p5.js,
-          # opencv.js, shimage.js, opencv-featurematch-js.js) the editor
-          # bundles into the zip for its own standalone-download use case.
+          # Any top-level .html/.js/.css file is project content - except
+          # the CDN libraries (p5.js, opencv.js, shimage.js,
+          # opencv-featurematch-js.js) the editor bundles into the zip for
+          # its own standalone-download use case, which we exclude by name.
           mkdir -p p5js
-          cp p5js-tmp/index.html p5js/index.html
-          cp p5js-tmp/sketch.js p5js/sketch.js
-          cp p5js-tmp/style.css p5js/style.css
+          VENDORED="p5.js p5.sound.min.js shimage.js opencv.js opencv-featurematch-js.js"
+          for f in p5js-tmp/*.html p5js-tmp/*.js p5js-tmp/*.css; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f")
+            case " $VENDORED " in
+              *" $base "*) continue ;;
+            esac
+            cp "$f" "p5js/$base"
+          done
           if [ -d p5js-tmp/images ]; then
             cp -r p5js-tmp/images p5js/images
           fi
