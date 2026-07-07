@@ -845,5 +845,5 @@ function alignImagePair(imageA, imageB, options = {}) {
   const transform2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
-  return { check.valid, transform, transform2D, inliers, inlierMatches, outlierMatches, reason: check.reason };
+  return { valid: check.valid, transform, transform2D, inlierMatches, outlierMatches, reason: check.reason };
 }
