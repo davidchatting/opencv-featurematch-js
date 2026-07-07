@@ -2,8 +2,8 @@ let box, box_in_scene;
 let result;
 
 function preload() {
-  box = loadImage('images/box.png');
-  box_in_scene = loadImage('images/box_in_scene.png');
+  box = loadImage('images/bastoncini.png');
+  box_in_scene = loadImage('images/bastoncini_in_scene.png');
 }
 
 async function setup() {

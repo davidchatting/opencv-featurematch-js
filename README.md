@@ -62,7 +62,7 @@ A minimal, editable sketch showing `featurematchReady()` + `alignImages()` in th
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/addons/p5.sound.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidchatting/shimage@1.3.0/shimage.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv/4.5.1/opencv.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@0.4.3/opencv-featurematch-js.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@0.5.0/opencv-featurematch-js.js"></script>
     
     <link rel="stylesheet" type="text/css" href="style.css">
     <meta charset="utf-8" />
@@ -83,8 +83,8 @@ let box, box_in_scene;
 let result;
 
 function preload() {
-  box = loadImage('images/box.png');
-  box_in_scene = loadImage('images/box_in_scene.png');
+  box = loadImage('images/bastoncini.png');
+  box_in_scene = loadImage('images/bastoncini_in_scene.png');
 }
 
 async function setup() {
