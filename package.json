@@ -1,6 +1,6 @@
 {
   "name": "opencv-featurematch-js",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Feature-based image alignment in the browser, built on OpenCV.js - finds matching features between two images and computes a homography between them",
   "main": "opencv-featurematch-js.js",
   "files": [

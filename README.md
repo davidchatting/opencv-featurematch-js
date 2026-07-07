@@ -41,10 +41,10 @@ The library is deliberately just feature matching and math - no DOM conventions 
 A minified build, `opencv-featurematch-js.min.js`, is generated automatically by CI on every push to `main` (see `.github/workflows/build-min.yml`) and committed back alongside the source - both are available via jsDelivr:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@1.0.0/opencv-featurematch-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@0.1.0/opencv-featurematch-js.min.js"></script>
 ```
 
-Pin to a version tag (`@1.0.0`) rather than `@main` so updates here can't silently change behaviour (or hand you a stale jsDelivr cache) for existing consumers. See [davidchatting/cdn](https://github.com/davidchatting/cdn) for other vendored libraries served the same way.
+Pin to a version tag (`@0.1.0`) rather than `@main` so updates here can't silently change behaviour (or hand you a stale jsDelivr cache) for existing consumers. See [davidchatting/cdn](https://github.com/davidchatting/cdn) for other vendored libraries served the same way.
 
 ## Demos
 
