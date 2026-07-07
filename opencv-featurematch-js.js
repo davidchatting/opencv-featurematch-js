@@ -49,6 +49,22 @@ function cvLoaded() {
   });
 }
 
+// This library also depends on shimage.js (cvMatToP5Image, applyTransform4x4)
+// being loaded - cvLoaded() alone only covers OpenCV.js. Callers should
+// `await featurematchReady()` instead of `cvLoaded()` directly, unless
+// they've already independently confirmed shimage.js is ready.
+function featurematchReady() {
+  return cvLoaded().then(() => new Promise(resolve => {
+    (function poll() {
+      if (typeof cvMatToP5Image === 'function' && typeof applyTransform4x4 === 'function') {
+        resolve();
+      } else {
+        setTimeout(poll, 50);
+      }
+    })();
+  }));
+}
+
 var canvas;
 var inputImageA = null, inputImageB = null;
 var points1 = [];
