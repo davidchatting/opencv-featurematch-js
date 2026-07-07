@@ -749,14 +749,21 @@ function stripShear(transform) {
   ];
 }
 
+function roundTo(value, precision) {
+  const factor = Math.pow(10, precision);
+  return Math.round(value * factor) / factor;
+}
+
 // Splits Align_img's matches (good_matches_global, points1/points2) into
 // inlier/outlier point pairs, by checking each match's membership in
 // good_inlier_matches (same technique drawMatchesOverlay already uses).
 // points1/points2 hold imageB's/imageA's coordinates respectively (Align_img
 // internally treats its first argument as the reference and its second as
-// the image being aligned) - re-labelled here to match alignImagePair's own
-// (imageA, imageB) parameter names.
-function getMatchPoints() {
+// the image being aligned) - reordered here to [imageA, imageB] to match
+// alignImagePair's own parameter order. Each match is a raw
+// [[xA, yA], [xB, yB]] pair, rounded to `precision` decimal places (default
+// 0, i.e. whole pixels).
+function getMatchPoints(precision = 0) {
   const inlierMatches = [];
   const outlierMatches = [];
   if (!good_matches_global) return { inlierMatches, outlierMatches };
@@ -775,10 +782,10 @@ function getMatchPoints() {
       }
     }
 
-    const point = {
-      imageA: [points2[i * 2], points2[i * 2 + 1]],
-      imageB: [points1[i * 2], points1[i * 2 + 1]]
-    };
+    const point = [
+      [roundTo(points2[i * 2], precision), roundTo(points2[i * 2 + 1], precision)],
+      [roundTo(points1[i * 2], precision), roundTo(points1[i * 2 + 1], precision)]
+    ];
     (isInlier ? inlierMatches : outlierMatches).push(point);
   }
 
@@ -796,7 +803,9 @@ function getMatchPoints() {
  * callers only ever need to check .valid, never wrap this in a try/catch.
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
- * @param {Object} options - passed through to isReasonableHomography
+ * @param {Object} options - passed through to isReasonableHomography;
+ *   also accepts options.precision (default 0) - decimal places to round
+ *   inlierMatches/outlierMatches coordinates to
  * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, inlierMatches: Array, outlierMatches: Array, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
@@ -810,8 +819,9 @@ function alignImagePair(imageA, imageB, options = {}) {
     return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: err.message };
   }
 
+  const { precision = 0 } = options;
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
-  const { inlierMatches, outlierMatches } = getMatchPoints();
+  const { inlierMatches, outlierMatches } = getMatchPoints(precision);
 
   if (!h || h.empty() || !h.data64F) {
     return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: 'No homography found' };
