@@ -1,8 +1,8 @@
 # opencv-featurematch-js
 
-A JavaScript library for feature-based image alignment in the browser, built on [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html). Given two images, it finds matching features, computes a homography between them, returning a transform used to warp one image onto the other.
+*opencv-featurematch-js* is a JavaScript library for feature-based image alignment in the browser, built on [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html). Given two images, it finds matching features, computes a homography between them, returning a transform used to warp one image onto the other.
 
-Useful anywhere two overlapping images need to be lined up automatically - panorama/mosaic stitching, burst-sequence or time-lapse alignment, augmented reality overlays, document/whiteboard scanning, or motion tracking across frames.
+Useful anywhere two overlapping images need to be lined up automatically - panorama/mosaic stitching, burst-sequence or time-lapse alignment, augmented reality overlays, document/whiteboard scanning, object tracking, or motion tracking across frames.
 
 Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.js](https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/) tutorial.
 
@@ -93,7 +93,7 @@ The returned result object:
 
 ## Syncing with the p5.js Editor
 
-This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main`, triggers `build.yml` to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
+This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main`, triggers [build.yml](.github/workflows/build.yml) to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
 
 ## License
 
