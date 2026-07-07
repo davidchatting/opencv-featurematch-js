@@ -8,7 +8,7 @@
  *      https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/
  *      (original link now dead; credit kept below alongside the code it applies to).
  *   2. imgproc - pure alignment math on top: homography validation/cleanup
- *      (isReasonableHomography, stripShear) and alignImagePair(), the clean
+ *      (isReasonableHomography, stripShear) and alignImages(), the clean
  *      two-image primitive most consumers actually want.
  *
  * No DOM/canvas conventions, no rendering, no EXIF/camera/playback, and no
@@ -22,7 +22,7 @@
 
 // opencv.js's own <script onload> fires once its JS wrapper has loaded, not
 // once its WASM runtime has actually finished initializing - calling
-// anything here (Align_img, alignImagePair) before that finishes throws
+// anything here (Align_img, alignImages) before that finishes throws
 // "undefined is not a constructor". cv.Mat is a reliable proxy for "the
 // runtime is ready": in practice it becomes available at the same instant as
 // every other bound class. cv is technically thenable, but awaiting it
@@ -480,14 +480,14 @@ return;
 
 // cvMatToP5Image now lives in shimage.js
 // -----------------------------------------------------------------------
-// imgproc - homography validation/cleanup, alignImagePair()
+// imgproc - homography validation/cleanup, alignImages()
 // -----------------------------------------------------------------------
 //
 // The 4x4/2D matrix helpers (identityMatrix, applyTransform4x4,
 // multiplyMatrix4x4, invertMatrix4x4, determinant4x4, cofactor4x4,
 // to2dAffine, invertMatrix2D) now live in davidchatting/shimage - this file
 // still uses them (isReasonableHomography's H.length === 16 branch is
-// shaped to match them, and consumers commonly compose alignImagePair's
+// shaped to match them, and consumers commonly compose alignImages's
 // transform with them) but depends on shimage.js being loaded for them,
 // rather than defining them itself.
 
@@ -647,7 +647,7 @@ function roundTo(value, precision) {
 // points1/points2 hold imageB's/imageA's coordinates respectively (Align_img
 // internally treats its first argument as the reference and its second as
 // the image being aligned) - reordered here to [imageA, imageB] to match
-// alignImagePair's own parameter order. Each match is a raw
+// alignImages's own parameter order. Each match is a raw
 // [[xA, yA], [xB, yB]] pair, rounded to `precision` decimal places (default
 // 0, i.e. whole pixels).
 function getMatchPoints(precision = 0) {
@@ -695,7 +695,7 @@ function getMatchPoints(precision = 0) {
  *   inlierMatches/outlierMatches coordinates to
  * @returns {{valid: boolean, transform: (Array|null), inlierMatches: Array, outlierMatches: Array, reason: string}}
  */
-function alignImagePair(imageA, imageB, options = {}) {
+function alignImages(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
     return { valid: false, transform: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
