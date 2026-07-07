@@ -12,29 +12,29 @@ Everything ships as a single file, **`opencv-featurematch-js.js`**, which depend
 - Alignment math on top: homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
 
 ```js
-const result = alignImagePair(imageA, imageB, options);
+const result = alignImages(imageA, imageB, options);
 // -> { valid: true, transform: [16 numbers, column-major 4x4], inlierMatches: [...26 pairs...], outlierMatches: [...], reason: 'OK' }
 ```
 
-`alignImagePair` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImagePair` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
+`alignImages` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImages` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
 
 `transform` is a flat 16-element **column-major** 4x4 - the same layout WebGL/OpenGL use natively, so `applyMatrix(...result.transform)` in p5.js's WEBGL mode works directly, no conversion needed, as does `drawProjectedImage()` and the other 4x4 matrix helpers below. For plain 2D canvas/p5.js drawing, convert it with `to2dAffine(transform)` - see below. It's populated as soon as `Align_img` finds a homography at all - including on an otherwise-`invalid` result (e.g. one `isReasonableHomography` rejected for excessive perspective) - so you can inspect or use a rejected transform yourself rather than only ever getting `null`. It's only `null` when no homography was found in the first place.
 
-`inlierMatches` and `outlierMatches` are the underlying point correspondences the homography was computed from, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates - `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected (`inlierMatches.length` is the inlier count). Useful for visualizing match quality (e.g. drawing lines between the two images) rather than just trusting a summary number. Populated whenever `Align_img` finds any matches at all, even on an otherwise-`invalid` result (e.g. one rejected for excessive perspective). Coordinates are rounded to whole pixels by default - pass `{ precision: 2 }` (decimal places) to `alignImagePair` for finer-grained values.
+`inlierMatches` and `outlierMatches` are the underlying point correspondences the homography was computed from, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates - `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected (`inlierMatches.length` is the inlier count). Useful for visualizing match quality (e.g. drawing lines between the two images) rather than just trusting a summary number. Populated whenever `Align_img` finds any matches at all, even on an otherwise-`invalid` result (e.g. one rejected for excessive perspective). Coordinates are rounded to whole pixels by default - pass `{ precision: 2 }` (decimal places) to `alignImages` for finer-grained values.
 
 Before calling either of the above, `await featurematchReady()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`. `featurematchReady()` waits for both `cvReady()` (OpenCV.js) and `shimageReady()` (`shimage.js`) - call it instead of either individually unless you have a specific reason to wait on just one:
 
 ```js
 await featurematchReady();
-const result = alignImagePair(imageA, imageB, options);
+const result = alignImages(imageA, imageB, options);
 
 applyMatrix(...result.transform);          // p5.js WEBGL mode - works directly
 applyMatrix(to2dAffine(result.transform)); // p5.js 2D mode / canvas setTransform()
 ```
 
-`to2dAffine` (from `davidchatting/shimage` - see below) converts any 4x4 matrix (e.g. `result.transform`, or one composed via `multiplyMatrix4x4` outside of `alignImagePair`) into the same 6-element form.
+`to2dAffine` (from `davidchatting/shimage` - see below) converts any 4x4 matrix (e.g. `result.transform`, or one composed via `multiplyMatrix4x4` outside of `alignImages`) into the same 6-element form.
 
-The library is deliberately just feature matching and homography-level math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers both the plain matrix helpers (`applyTransform4x4`, `multiplyMatrix4x4`, `invertMatrix4x4`, `to2dAffine`, `invertMatrix2D`, etc., used throughout `isReasonableHomography` and by consumers composing `alignImagePair`'s `transform`) and the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad) - make sure it's loaded alongside this file (script tag order between the two doesn't matter, since nothing calls either library until your own code runs later). See [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
+The library is deliberately just feature matching and homography-level math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers both the plain matrix helpers (`applyTransform4x4`, `multiplyMatrix4x4`, `invertMatrix4x4`, `to2dAffine`, `invertMatrix2D`, etc., used throughout `isReasonableHomography` and by consumers composing `alignImages`'s `transform`) and the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad) - make sure it's loaded alongside this file (script tag order between the two doesn't matter, since nothing calls either library until your own code runs later). See [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
 
 A minified build, `opencv-featurematch-js.min.js`, is generated automatically by CI on every push to `main` (see `.github/workflows/build-min.yml`) and committed back alongside the source - both are available via jsDelivr:
 
@@ -46,7 +46,7 @@ Pin to a version tag (`@0.4.1`) rather than `@main` so updates here can't silent
 
 ## Demo
 
-A minimal, editable sketch showing `featurematchReady()` + `alignImagePair()` in the smallest amount of code, loaded straight from the CDN.
+A minimal, editable sketch showing `featurematchReady()` + `alignImages()` in the smallest amount of code, loaded straight from the CDN.
 
 [**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
 
