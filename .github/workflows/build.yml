@@ -45,28 +45,35 @@ jobs:
 
           rm -rf p5js-tmp p5js-demo.zip
 
-      - name: Sync README code blocks from p5js/
+      - name: Sync README code blocks and link from p5js/ and package.json
         run: |
           python3 <<'PYEOF'
+          import json
           import re
 
-          def sync_block(readme, marker, file_path, lang):
-              with open(file_path) as f:
-                  content = f.read().rstrip('\n')
+          def sync(readme, marker, replacement_body, open_wrap='', close_wrap=''):
               pattern = re.compile(
-                  r'(<!-- p5js-sync:' + re.escape(marker) + r' -->\n```' + lang + r'\n).*?(\n```\n<!-- /p5js-sync:' + re.escape(marker) + r' -->)',
+                  r'(<!-- p5js-sync:' + re.escape(marker) + r' -->\n' + open_wrap + r').*?(' + close_wrap + r'\n<!-- /p5js-sync:' + re.escape(marker) + r' -->)',
                   re.DOTALL
               )
               # Replacement passed as a function, not a string, so content
               # containing regex backreference-like sequences (e.g. "\1")
               # is inserted literally rather than being reinterpreted.
-              return pattern.sub(lambda m: m.group(1) + content + m.group(2), readme)
+              return pattern.sub(lambda m: m.group(1) + replacement_body + m.group(2), readme)
+
+          def file_content(path):
+              with open(path) as f:
+                  return f.read().rstrip('\n')
 
           with open('README.md') as f:
               readme = f.read()
 
-          readme = sync_block(readme, 'index.html', 'p5js/index.html', 'html')
-          readme = sync_block(readme, 'sketch.js', 'p5js/sketch.js', 'js')
+          readme = sync(readme, 'index.html', file_content('p5js/index.html'), open_wrap='```html\n', close_wrap='\n```')
+          readme = sync(readme, 'sketch.js', file_content('p5js/sketch.js'), open_wrap='```js\n', close_wrap='\n```')
+
+          with open('package.json') as f:
+              homepage = json.load(f)['homepage']
+          readme = sync(readme, 'homepage', f'[**Open in the p5.js editor**]({homepage})')
 
           with open('README.md', 'w') as f:
               f.write(readme)
