@@ -694,7 +694,7 @@ function getMatchPoints(precision = 0) {
  *   inlierMatches/outlierMatches coordinates to
  * @returns {{valid: boolean, transform: (Array|null), inlierMatches: Array, outlierMatches: Array, reason: string}}
  *   transform maps imageA's own coordinate space into imageB's - e.g.
- *   applyMatrix(...result.transform) (WEBGL) or
+ *   applyMatrix(result.transform) (WEBGL) or
  *   applyMatrix(to2dAffine(result.transform)) (2D) directly places
  *   imageA's content where it appears within imageB, no inversion needed.
  */
