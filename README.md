@@ -8,7 +8,7 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 
 ## Example
 
-This example is written with **p5.js** and can be <!-- p5js-sync:homepage -->[run in the browser](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->.
+This example is written for [p5.js](https://p5js.org) and can be <!-- p5js-sync:homepage -->[run in the browser](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->.
 
 ### sketch.js
 <!-- p5js-sync:sketch.js -->
@@ -93,7 +93,7 @@ The returned result object:
 
 ## Syncing with the p5.js Editor
 
-This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main`, triggers [build.yml](.github/workflows/build.yml) to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
+This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main` branch, triggers [build.yml](.github/workflows/build.yml) to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the [package.json](package.json) `homepage` field.
 
 ## License
 
