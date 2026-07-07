@@ -735,28 +735,28 @@ function stripShear(transform) {
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
- * @returns {{valid: boolean, transform: (Array|null), inliers: number, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, inliers: 0, reason: err.message };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: err.message };
   }
 
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, inliers, reason: 'No homography found' };
+    return { valid: false, transform: null, transform2D: null, inliers, reason: 'No homography found' };
   }
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
   if (!check.valid) {
-    return { valid: false, transform: null, inliers, reason: check.reason };
+    return { valid: false, transform: null, transform2D: null, inliers, reason: check.reason };
   }
 
   const transform = [
@@ -766,5 +766,9 @@ function alignImagePair(imageA, imageB, options = {}) {
     h.data64F[6], h.data64F[7], 0, h.data64F[8]
   ];
 
-  return { valid: true, transform, inliers, reason: check.reason };
+  // The raw 3x3 homography, row-major - the plain 2D form (no Z-row/column
+  // padding for drawProjectedImage's WEBGL quad warp).
+  const transform2D = Array.from(h.data64F);
+
+  return { valid: true, transform, transform2D, inliers, reason: check.reason };
 }

@@ -13,10 +13,12 @@ Everything ships as a single file, **`opencv-featurematch-js.js`**:
 
 ```js
 const result = alignImagePair(imageA, imageB, options);
-// -> { valid: true, transform: [16 numbers, row-major 4x4], inliers: 26, reason: 'OK' }
+// -> { valid: true, transform: [16 numbers, row-major 4x4], transform2D: [9 numbers, row-major 3x3], inliers: 26, reason: 'OK' }
 ```
 
 `alignImagePair` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImagePair` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
+
+`transform` and `transform2D` are the same homography in two shapes: `transform` is padded to a flat 16-element row-major 4x4 (for `drawProjectedImage`'s 3D/WEBGL quad warp and the other 4x4 matrix helpers below), `transform2D` is the raw flat 9-element row-major 3x3 (for anyone doing their own 2D projective math directly).
 
 Before calling either of the above, `await cvLoaded()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`:
 
