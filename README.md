@@ -6,20 +6,14 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 
 ## Demo
 
-A minimal, editable sketch showing `featurematchReady()` + `alignImages()` in the smallest amount of code, loaded straight from the CDN.
-
 <!-- p5js-sync:homepage -->
 [**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
 <!-- /p5js-sync:homepage -->
 
 <!-- p5js-sync:index.html -->
-```html
-```
 <!-- /p5js-sync:index.html -->
 
 <!-- p5js-sync:sketch.js -->
-```js
-```
 <!-- /p5js-sync:sketch.js -->
 
 ## License
