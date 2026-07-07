@@ -84,7 +84,7 @@ index.html
 ```
 <!-- /p5js-sync:index.html -->
 
-### Keeping the demo in sync
+### Syncing with the p5.js Editor
 
 This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code is maintained. Using the github workflows, every repository push to `main`, triggers `build.yml` to download the sketch's files via the editor's export API, write them into [`p5js/`](p5js) in this repo, and insert the same content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
 
