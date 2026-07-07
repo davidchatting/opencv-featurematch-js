@@ -810,13 +810,13 @@ function getMatchPoints(precision = 0) {
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, transform2D: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: err.message };
+    return { valid: false, transform: null, transform2D: null, inlierMatches: [], outlierMatches: [], reason: err.message };
   }
 
   const { precision = 0 } = options;
@@ -824,14 +824,13 @@ function alignImagePair(imageA, imageB, options = {}) {
   const { inlierMatches, outlierMatches } = getMatchPoints(precision);
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: 'No homography found' };
+    return { valid: false, transform: null, transform2D: null, inlierMatches, outlierMatches, reason: 'No homography found' };
   }
 
-  const check = isReasonableHomography(Array.from(h.data64F), options);
-  if (!check.valid) {
-    return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: check.reason };
-  }
-
+  // Computed as soon as a homography exists, and returned regardless of
+  // whether isReasonableHomography accepts it below - a rejected homography
+  // (e.g. excessive perspective) is still a real, inspectable result, not
+  // nothing; callers who want to ignore it can just check .valid.
   const transform = [
     h.data64F[0], h.data64F[1], 0, h.data64F[2],
     h.data64F[3], h.data64F[4], 0, h.data64F[5],
@@ -842,9 +841,9 @@ function alignImagePair(imageA, imageB, options = {}) {
   // The affine part of the homography as [a, b, c, d, e, f] - the shape both
   // the canvas API's setTransform() and p5.js's applyMatrix() (2D mode)
   // expect. Perspective terms (h.data64F[6], [7]) are dropped, same as
-  // to2dAffine(transform) would give - isReasonableHomography's own default
-  // maxPerspective threshold already keeps those small for a valid result.
+  // to2dAffine(transform) would give.
   const transform2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
 
-  return { valid: true, transform, transform2D, inliers, inlierMatches, outlierMatches, reason: check.reason };
+  const check = isReasonableHomography(Array.from(h.data64F), options);
+  return { check.valid, transform, transform2D, inliers, inlierMatches, outlierMatches, reason: check.reason };
 }
