@@ -48,7 +48,7 @@ Pin to a version tag (`@0.4.1`) rather than `@main` so updates here can't silent
 
 A minimal, editable sketch showing `featurematchReady()` + `alignImages()` in the smallest amount of code, loaded straight from the CDN.
 
-[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
+[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR) - also recorded in [`DEMO`](DEMO).
 
 ## License
 
