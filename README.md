@@ -18,7 +18,7 @@ const result = alignImages(imageA, imageB, options);
 
 `alignImages` exists because `Align_img` itself doesn't return anything - it's an OpenCV.js port that mutates module-level globals (`h`, `good_inlier_matches`). `alignImages` wraps that and gives you a real return value instead. It's synchronous throughout: every OpenCV.js call inside `Align_img` (`detectAndCompute`, `knnMatch`, `findHomography`) is a synchronous WASM operation, nothing here is ever awaited.
 
-`transform` is a flat 16-element **column-major** 4x4 - the same layout WebGL/OpenGL use natively, so `applyMatrix(...result.transform)` in p5.js's WEBGL mode works directly, no conversion needed, as does `drawProjectedImage()` and the other 4x4 matrix helpers below. For plain 2D canvas/p5.js drawing, convert it with `to2dAffine(transform)` - see below. It's populated as soon as `Align_img` finds a homography at all - including on an otherwise-`invalid` result (e.g. one `isReasonableHomography` rejected for excessive perspective) - so you can inspect or use a rejected transform yourself rather than only ever getting `null`. It's only `null` when no homography was found in the first place.
+`transform` maps **imageA's own coordinate space into imageB's** - e.g. `applyMatrix(result.transform)` directly places imageA's content where it appears within imageB, no inversion needed. It's a flat 16-element **column-major** 4x4 - the same layout WebGL/OpenGL use natively, so `applyMatrix(result.transform)` in p5.js's WEBGL mode works directly, no conversion needed, as does `drawProjectedImage()` and the other 4x4 matrix helpers below. For plain 2D canvas/p5.js drawing, convert it with `to2dAffine(transform)` - see below. It's populated as soon as `Align_img` finds a homography at all - including on an otherwise-`invalid` result (e.g. one `isReasonableHomography` rejected for excessive perspective) - so you can inspect or use a rejected transform yourself rather than only ever getting `null`. It's only `null` when no homography was found in the first place.
 
 `inlierMatches` and `outlierMatches` are the underlying point correspondences the homography was computed from, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates - `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected (`inlierMatches.length` is the inlier count). Useful for visualizing match quality (e.g. drawing lines between the two images) rather than just trusting a summary number. Populated whenever `Align_img` finds any matches at all, even on an otherwise-`invalid` result (e.g. one rejected for excessive perspective). Coordinates are rounded to whole pixels by default - pass `{ precision: 2 }` (decimal places) to `alignImages` for finer-grained values.
 
@@ -28,7 +28,7 @@ Before calling either of the above, `await featurematchReady()` - opencv.js's `<
 await featurematchReady();
 const result = alignImages(imageA, imageB, options);
 
-applyMatrix(...result.transform);          // p5.js WEBGL mode - works directly
+applyMatrix(result.transform);          // p5.js WEBGL mode - works directly
 applyMatrix(to2dAffine(result.transform)); // p5.js 2D mode / canvas setTransform()
 ```
 
@@ -104,7 +104,7 @@ function draw() {
     translate(box.width, 0);
     image(box_in_scene, 0, 0);
     if (result && result.valid) {
-      applyMatrix(invertMatrix4x4(result.transform));
+      applyMatrix(result.transform);
       noFill();
       strokeWeight(3);
       stroke('green');

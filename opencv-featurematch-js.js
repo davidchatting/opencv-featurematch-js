@@ -509,7 +509,7 @@ function isReasonableHomography(H, options = {}) {
   const {
     maxRotationDeg = 15,      // max allowed rotation in degrees
     maxScale = 3,             // max allowed scale, n - homography can be up to nx bigger or nx smaller
-    maxShear = 0.3,           // max allowed shear
+    maxShear = 0.5,           // max allowed shear
     maxPerspective = 0.01     // max allowed perspective distortion
   } = options;
   const minScale = 1 / maxScale;
@@ -644,10 +644,9 @@ function roundTo(value, precision) {
 // Splits Align_img's matches (good_matches_global, points1/points2) into
 // inlier/outlier point pairs, by checking each match's membership in
 // good_inlier_matches (same technique drawMatchesOverlay already uses).
-// points1/points2 hold imageB's/imageA's coordinates respectively (Align_img
-// internally treats its first argument as the reference and its second as
-// the image being aligned) - reordered here to [imageA, imageB] to match
-// alignImages's own parameter order. Each match is a raw
+// alignImages calls Align_img(imageB, imageA) (swapped from its own
+// parameter order - see alignImages), so points1/points2 hold imageA's/
+// imageB's coordinates respectively here. Each match is a raw
 // [[xA, yA], [xB, yB]] pair, rounded to `precision` decimal places (default
 // 0, i.e. whole pixels).
 function getMatchPoints(precision = 0) {
@@ -670,8 +669,8 @@ function getMatchPoints(precision = 0) {
     }
 
     const point = [
-      [roundTo(points2[i * 2], precision), roundTo(points2[i * 2 + 1], precision)],
-      [roundTo(points1[i * 2], precision), roundTo(points1[i * 2 + 1], precision)]
+      [roundTo(points1[i * 2], precision), roundTo(points1[i * 2 + 1], precision)],
+      [roundTo(points2[i * 2], precision), roundTo(points2[i * 2 + 1], precision)]
     ];
     (isInlier ? inlierMatches : outlierMatches).push(point);
   }
@@ -694,14 +693,26 @@ function getMatchPoints(precision = 0) {
  *   also accepts options.precision (default 0) - decimal places to round
  *   inlierMatches/outlierMatches coordinates to
  * @returns {{valid: boolean, transform: (Array|null), inlierMatches: Array, outlierMatches: Array, reason: string}}
+ *   transform maps imageA's own coordinate space into imageB's - e.g.
+ *   applyMatrix(result.transform) (WEBGL) or
+ *   applyMatrix(to2dAffine(result.transform)) (2D) directly places
+ *   imageA's content where it appears within imageB, no inversion needed.
  */
 function alignImages(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
     return { valid: false, transform: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
 
+  // Align_img(a, b) fits b's points as the "original" plane and a's as the
+  // "target" (see its STEP 8) - i.e. it maps its *second* argument onto its
+  // first. Called here as (imageB, imageA), swapped from alignImages' own
+  // (imageA, imageB) signature, so the resulting h - and so transform below -
+  // maps imageA -> imageB directly: the direction callers actually want in
+  // practice (e.g. "where does the reference image's content land inside
+  // the image being aligned"), with no inversion needed. Align_img itself
+  // is untouched; only the order it's called with here changes.
   try {
-    Align_img(imageA, imageB);
+    Align_img(imageB, imageA);
   } catch (err) {
     return { valid: false, transform: null, inlierMatches: [], outlierMatches: [], reason: err.message };
   }
