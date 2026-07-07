@@ -2,9 +2,13 @@
 
 A JavaScript library for feature-based image alignment in the browser, built on [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html). Given two images, it finds matching features, computes a homography between them, returning a transform used to warp one image onto the other.
 
+Useful anywhere two overlapping images need to be lined up automatically - panorama/mosaic stitching, burst-sequence or time-lapse alignment, augmented reality overlays, document/whiteboard scanning, or motion tracking across frames.
+
 Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.js](https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/) tutorial.
 
 ## Demo
+
+This example is written with [p5.js](https://p5js.org/).
 
 <!-- p5js-sync:homepage -->
 [**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
@@ -48,6 +52,29 @@ function draw() {
 }
 ```
 <!-- /p5js-sync:sketch.js -->
+
+### Using the library
+
+`await featurematchReady()` before calling anything else. OpenCV.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`. It resolves once both `cvReady()` (OpenCV.js's WASM runtime) and `shimageReady()` ([shimage.js](https://github.com/davidchatting/shimage)'s matrix/image helpers) are ready.
+
+`alignImages(imageA, imageB, options)` runs the alignment: it detects KAZE features in both images, matches them with a kNN matcher, keeps the confident matches, and fits a homography between them with `cv.findHomography` (RANSAC) - then checks the fit against the thresholds below before returning. `transform` maps `imageA`'s own coordinate space into `imageB`'s directly - e.g. `applyMatrix(result.transform)` (WEBGL) or `applyMatrix(to2dAffine(result.transform))` (2D) places `imageA`'s content where it appears within `imageB`, no inversion needed.
+
+`options`:
+- `maxRotationDeg` - max allowed rotation in degrees (default: unbounded)
+- `maxScale` - max allowed scale factor, n - the homography can be up to nx bigger or nx smaller (default `3`)
+- `maxShear` - max allowed shear (default `0.5`)
+- `maxPerspective` - max allowed perspective distortion (default `0.01`)
+- `precision` - decimal places to round `inlierMatches`/`outlierMatches` coordinates to (default `0`, i.e. whole pixels)
+
+The returned result object:
+- `valid` - whether the fitted homography passed the thresholds above
+- `transform` - a flat 16-element **column-major** 4x4 matrix (the same layout WebGL/OpenGL use natively). Populated as soon as any homography is found at all, even on an otherwise-invalid result - only `null` if no homography was found
+- `inlierMatches` / `outlierMatches` - the underlying point correspondences, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates; `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected
+- `reason` - why an invalid result was rejected (or `'OK'`)
+
+### Keeping the demo in sync
+
+The sketch above lives primarily on the [p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR) - its URL is kept in `package.json`'s `homepage` field, the single source of truth for the sketch ID. On every push to `main`, `build.yml` downloads that sketch's files via the editor's export API, writes them into [`p5js/`](p5js) in this repo, and syncs the same content into the code blocks and link above - so editing the sketch on the editor and pushing anything to `main` keeps this README, and `p5js/`, up to date automatically.
 
 index.html
 <!-- p5js-sync:index.html -->
