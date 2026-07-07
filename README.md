@@ -10,30 +10,7 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 [**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
 <!-- /p5js-sync:homepage -->
 
-<!-- p5js-sync:index.html -->
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/addons/p5.sound.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidchatting/shimage@1.3.0/shimage.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv/4.5.1/opencv.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@0.5.1/opencv-featurematch-js.js"></script>
-    
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <meta charset="utf-8" />
-
-  </head>
-  <body>
-    <main>
-    </main>
-    <script src="sketch.js"></script>
-  </body>
-</html>
-```
-<!-- /p5js-sync:index.html -->
-
+sketch.js
 <!-- p5js-sync:sketch.js -->
 ```js
 let box, box_in_scene;
@@ -71,6 +48,31 @@ function draw() {
 }
 ```
 <!-- /p5js-sync:sketch.js -->
+
+index.html
+<!-- p5js-sync:index.html -->
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/addons/p5.sound.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/shimage@1.3.0/shimage.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv/4.5.1/opencv.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@0.5.1/opencv-featurematch-js.js"></script>
+    
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8" />
+
+  </head>
+  <body>
+    <main>
+    </main>
+    <script src="sketch.js"></script>
+  </body>
+</html>
+```
+<!-- /p5js-sync:index.html -->
 
 ## License
 
