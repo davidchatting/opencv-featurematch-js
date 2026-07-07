@@ -621,11 +621,11 @@ function cofactor4x4(m, row, col) {
 function isReasonableHomography(H, options = {}) {
   const {
     maxRotationDeg = 15,      // max allowed rotation in degrees
-    minScale = 1 / 3,         // min allowed scale (3x smaller)
-    maxScale = 3,             // max allowed scale (3x bigger)
+    maxScale = 3,             // max allowed scale, n - homography can be up to nx bigger or nx smaller
     maxShear = 0.3,           // max allowed shear
     maxPerspective = 0.001    // max allowed perspective distortion
   } = options;
+  const minScale = 1 / maxScale;
 
   if (!H) return { valid: false, reason: 'H is null or undefined' };
 
