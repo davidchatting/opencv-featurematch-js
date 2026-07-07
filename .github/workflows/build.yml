@@ -68,27 +68,28 @@ jobs:
 
           def sync_url(readme, marker, url, default_text='**Open in the p5.js editor**'):
               # Like sync(), but only ever replaces the URL inside the
-              # markdown link's (...) - whatever link text already sits in
-              # [...] between the markers (custom or otherwise) is left
-              # alone. Only falls back to reconstructing a full default link
-              # when there's no existing link to preserve the text of, e.g.
-              # the very first run against an empty block.
-              block_pattern = re.compile(
-                  r'<!-- p5js-sync:' + re.escape(marker) + r' -->.*?<!-- /p5js-sync:' + re.escape(marker) + r' -->',
-                  re.DOTALL
-              )
-              block_match = block_pattern.search(readme)
-              if not block_match:
-                  return readme
-
-              block = block_match.group(0)
+              # markdown link's (...) - link text and every character of
+              # surrounding formatting/whitespace (inline in a sentence, on
+              # its own line, whatever) between the markers is left exactly
+              # as written. Only falls back to reconstructing a full default
+              # link when there's no existing link to preserve the
+              # formatting of, e.g. the very first run against an empty
+              # block. Handles the marker appearing more than once in the
+              # README (each occurrence is fixed up independently) - a plain
+              # .search()/single replacement would silently leave every
+              # occurrence after the first stale.
+              open_marker = f'<!-- p5js-sync:{marker} -->'
+              close_marker = f'<!-- /p5js-sync:{marker} -->'
+              block_pattern = re.compile(re.escape(open_marker) + r'.*?' + re.escape(close_marker), re.DOTALL)
               link_pattern = re.compile(r'\]\(https?://[^)\s]*\)')
-              if link_pattern.search(block):
-                  new_block = link_pattern.sub(lambda m: f']({url})', block, count=1)
-              else:
-                  new_block = f'<!-- p5js-sync:{marker} -->\n[{default_text}]({url})\n<!-- /p5js-sync:{marker} -->'
 
-              return readme[:block_match.start()] + new_block + readme[block_match.end():]
+              def replace_block(m):
+                  block = m.group(0)
+                  if link_pattern.search(block):
+                      return link_pattern.sub(lambda lm: f']({url})', block, count=1)
+                  return f'{open_marker}\n[{default_text}]({url})\n{close_marker}'
+
+              return block_pattern.sub(replace_block, readme)
 
           def file_content(path):
               with open(path) as f:
