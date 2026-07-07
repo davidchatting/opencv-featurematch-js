@@ -525,24 +525,28 @@ function multiplyMatrix4x4(A, B) {
 }
 
 /**
- * Inverts a flat 9-element row-major 3x3 matrix (e.g. alignImagePair's
- * transform2D), via the closed-form adjugate/determinant formula.
- * @param {Array} A - flat 9-element row-major 3x3 matrix
- * @returns {Array|null} - flat 9-element row-major 3x3 inverse, or null if A
- *   isn't a flat 9-element array or isn't invertible (det === 0)
+ * Inverts a flat 6-element [a, b, c, d, e, f] 2D affine matrix - the same
+ * shape alignImagePair's matrix2D uses, and the one both the canvas API's
+ * setTransform() and p5.js's applyMatrix() (2D mode) expect:
+ *   | a c e |
+ *   | b d f |
+ *   | 0 0 1 |
+ * @param {Array} M - flat 6-element [a, b, c, d, e, f] 2D affine matrix
+ * @returns {Array|null} - flat 6-element [a, b, c, d, e, f] inverse, or null
+ *   if M isn't a flat 6-element array or isn't invertible (det === 0)
  */
-function invertMatrix3x3(A) {
-  if (!Array.isArray(A) || A.length !== 9) return null;
+function invertMatrix2D(M) {
+  if (!Array.isArray(M) || M.length !== 6) return null;
 
-  const [a0, a1, a2, a3, a4, a5, a6, a7, a8] = A;
-  const det = a0 * (a4 * a8 - a5 * a7) - a1 * (a3 * a8 - a5 * a6) + a2 * (a3 * a7 - a4 * a6);
+  const [a, b, c, d, e, f] = M;
+  const det = a * d - b * c;
   if (det === 0) return null;
 
   const invDet = 1 / det;
   return [
-    (a4 * a8 - a5 * a7) * invDet, (a2 * a7 - a1 * a8) * invDet, (a1 * a5 - a2 * a4) * invDet,
-    (a5 * a6 - a3 * a8) * invDet, (a0 * a8 - a2 * a6) * invDet, (a2 * a3 - a0 * a5) * invDet,
-    (a3 * a7 - a4 * a6) * invDet, (a1 * a6 - a0 * a7) * invDet, (a0 * a4 - a1 * a3) * invDet
+    d * invDet, -b * invDet,
+    -c * invDet, a * invDet,
+    (c * f - d * e) * invDet, (b * e - a * f) * invDet
   ];
 }
 
@@ -757,28 +761,28 @@ function stripShear(transform) {
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
- * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), matrix2D: (Array|null), inliers: number, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, matrix2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: err.message };
+    return { valid: false, transform: null, matrix2D: null, inliers: 0, reason: err.message };
   }
 
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, transform2D: null, inliers, reason: 'No homography found' };
+    return { valid: false, transform: null, matrix2D: null, inliers, reason: 'No homography found' };
   }
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
   if (!check.valid) {
-    return { valid: false, transform: null, transform2D: null, inliers, reason: check.reason };
+    return { valid: false, transform: null, matrix2D: null, inliers, reason: check.reason };
   }
 
   const transform = [
@@ -788,9 +792,12 @@ function alignImagePair(imageA, imageB, options = {}) {
     h.data64F[6], h.data64F[7], 0, h.data64F[8]
   ];
 
-  // The raw 3x3 homography, row-major - the plain 2D form (no Z-row/column
-  // padding for drawProjectedImage's WEBGL quad warp).
-  const transform2D = Array.from(h.data64F);
+  // The affine part of the homography as [a, b, c, d, e, f] - the shape both
+  // the canvas API's setTransform() and p5.js's applyMatrix() (2D mode)
+  // expect. Perspective terms (h.data64F[6], [7]) are dropped, same as
+  // to2dAffine(transform) would give - isReasonableHomography's own default
+  // maxPerspective threshold already keeps those small for a valid result.
+  const matrix2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
 
-  return { valid: true, transform, transform2D, inliers, reason: check.reason };
+  return { valid: true, transform, matrix2D, inliers, reason: check.reason };
 }
