@@ -6,10 +6,10 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 
 ## The library
 
-Everything ships as a single file, **`opencv-featurematch-js.js`**:
+Everything ships as a single file, **`opencv-featurematch-js.js`**, which now depends on [davidchatting/shimage](https://github.com/davidchatting/shimage) being loaded too - not just the other way around (see below):
 
 - The core feature-matching/homography computation (`Align_img`), adapted from the tutorial above.
-- Alignment math on top: matrix helpers for both the 3D/WEBGL 4x4 form (`invertMatrix4x4`, `multiplyMatrix4x4`, `to2dAffine`) and the plain 2D affine 6-element form (`invertMatrix2D`), homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
+- Alignment math on top: homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
 
 ```js
 const result = alignImagePair(imageA, imageB, options);
@@ -30,13 +30,13 @@ const result = alignImagePair(imageA, imageB, options);
 applyMatrix(result.transform2D);
 ```
 
-`to2dAffine` still exists for converting any other 4x4 matrix (e.g. one composed via `multiplyMatrix4x4` outside of `alignImagePair`) into the same 6-element form:
+`to2dAffine` (from `davidchatting/shimage` - see below) converts any 4x4 matrix (e.g. `result.transform`, or one composed via `multiplyMatrix4x4` outside of `alignImagePair`) into the same 6-element form:
 
 ```js
 applyMatrix(to2dAffine(someOther4x4Transform));
 ```
 
-The library is deliberately just feature matching and math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad); see [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
+The library is deliberately just feature matching and homography-level math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers both the plain matrix helpers (`applyTransform4x4`, `multiplyMatrix4x4`, `invertMatrix4x4`, `to2dAffine`, `invertMatrix2D`, etc., used throughout `isReasonableHomography` and by consumers composing `alignImagePair`'s `transform`) and the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad) - make sure it's loaded alongside this file (script tag order between the two doesn't matter, since nothing calls either library until your own code runs later). See [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
 
 A minified build, `opencv-featurematch-js.min.js`, is generated automatically by CI on every push to `main` (see `.github/workflows/build-min.yml`) and committed back alongside the source - both are available via jsDelivr:
 
