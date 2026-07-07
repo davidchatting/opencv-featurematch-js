@@ -1,35 +1,10 @@
 /*!
  * opencv-featurematch-js.js - feature-based image alignment for OpenCV.js
  *
- * Combines two parts that used to ship as separate files:
- *   1. Align_img() - the core feature-matching/homography computation.
- *      Originally adapted from Scott Suhy's tutorial "Image Alignment
- *      (Feature Based) in OpenCV.js":
- *      https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/
- *      (original link now dead; credit kept below alongside the code it applies to).
- *   2. imgproc - pure alignment math on top: homography validation/cleanup
- *      (isReasonableHomography, stripShear) and alignImages(), the clean
- *      two-image primitive most consumers actually want.
- *
- * No DOM/canvas conventions, no rendering, no EXIF/camera/playback, and no
- * multi-image sequencing policy - all of that is application-specific and
- * stays in each app's own sketch.js. The 4x4/2D matrix helpers
- * (applyTransform4x4, multiplyMatrix4x4, invertMatrix4x4, to2dAffine,
- * invertMatrix2D, etc.) and the p5.js/WEBGL rendering side both live in
- * davidchatting/shimage - this file depends on it being loaded too, not
- * just the other way around.
+ * Dependencies: davidchatting/shimage + opencv/4.5.1
+ * MIT License - Copyright (c) 2026 David Chatting
  */
 
-// opencv.js's own <script onload> fires once its JS wrapper has loaded, not
-// once its WASM runtime has actually finished initializing - calling
-// anything here (Align_img, alignImages) before that finishes throws
-// "undefined is not a constructor". cv.Mat is a reliable proxy for "the
-// runtime is ready": in practice it becomes available at the same instant as
-// every other bound class. cv is technically thenable, but awaiting it
-// directly never resolves - use this instead. Callers should `await
-// featurematchReady()` (which covers this and shimage.js both) rather than
-// this directly, unless they've already independently confirmed shimage.js
-// is ready.
 function cvReady() {
   return new Promise(resolve => {
     if (typeof cv !== 'undefined' && cv.Mat) {
@@ -51,8 +26,6 @@ function cvReady() {
   });
 }
 
-// This library depends on shimage.js (cvMatToP5Image, applyTransform4x4)
-// being loaded too - resolves once both are actually defined as globals.
 function shimageReady() {
   return new Promise(resolve => {
     (function poll() {
@@ -65,9 +38,6 @@ function shimageReady() {
   });
 }
 
-// Waits for both dependencies (OpenCV.js and shimage.js) at once - call
-// this rather than cvReady()/shimageReady() individually unless you have a
-// specific reason to wait on just one of them.
 function featurematchReady() {
   return Promise.all([cvReady(), shimageReady()]).then(() => {});
 }
@@ -80,11 +50,12 @@ var good_inlier_matches;
 var h;
 var good_matches_global = null; // store matches so draw() can render them
 
+/**
+ * Adapted from: https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/
+*/
 function Align_img(image_element_a, image_element_b) {
    if (!image_element_a || !image_element_b) return null;
 
-   //Based on: https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/ (original now dead)
-   // reset previous state so repeated presses don't append results
    points1 = [];
    points2 = [];
    good_inlier_matches = new cv.DMatchVector();
@@ -382,114 +353,63 @@ function Align_img(image_element_a, image_element_b) {
   //inlierMatches.delete();
 }
 
-// Draw matches overlay between the two displayed images.
-// Good matches that are in good_inlier_matches -> green; the rest -> red.
-function drawMatchesOverlay() {
-  if (!good_matches_global || good_matches_global.size() === 0) return;
-
-  strokeWeight(2);
-
-  // We compute screen coords for lines (taking the horizontal flip into account),
-  // but draw the endpoint markers inside the SAME transforms used to render the images
-  // so markers align exactly with the textured images.
-  for (let i = 0; i < good_matches_global.size(); ++i) {
-    const m = good_matches_global.get(i);
-    const px1 = points1[i * 2 + 0];
-    const py1 = points1[i * 2 + 1];
-    const px2 = points2[i * 2 + 0];
-    const py2 = points2[i * 2 + 1];
-
-    // determine if this match is an inlier
-    let isInlier = false;
-    if (good_inlier_matches && good_inlier_matches.size && good_inlier_matches.size() > 0) {
-      for (let j = 0; j < good_inlier_matches.size(); ++j) {
-        const im = good_inlier_matches.get(j);
-        if (im.queryIdx === m.queryIdx && im.trainIdx === m.trainIdx) {
-          isInlier = true;
-          break;
-        }
-      }
-    }
-
-    let l0=applyTransform4x4(px1, py1, imageTransforms[1]);
-    let l1=applyTransform4x4(px2, py2, imageTransforms[0]);
-    stroke(isInlier ? 'lime' : 'red');
-    circle(l0[0], l0[1], 6);
-    line(l0[0], l0[1], l1[0], l1[1]);
-    circle(l1[0], l1[1], 6);
-  }
-}
-
 function getMatStats(Mat, name)
 {
-let type = Mat.type()
-let channels = Mat.channels();
-let cols = Mat.cols;
-let rows = Mat.rows;
-let depth = Mat.depth();
-let baseline_colorspace = "";
-let baseline_matType = "";
+  let type = Mat.type()
+  let channels = Mat.channels();
+  let cols = Mat.cols;
+  let rows = Mat.rows;
+  let depth = Mat.depth();
+  let baseline_colorspace = "";
+  let baseline_matType = "";
 
-if (channels == 4){
-baseline_colorspace = "RGBA or BGRA"
-if(type == 24){baseline_matType = "CV_8UC4";}
-if(type == 25){baseline_matType = "CV_8SC4";}
-if(type == 26){baseline_matType = "CV_16UC4";}
-if(type == 27){baseline_matType = "CV_16SC4";}
-if(type == 28){baseline_matType = "CV_32SC4";}
-if(type == 29){baseline_matType = "CV_32FC4";}
-if(type == 30){baseline_matType = "CV_64FC4";}
-}
-if (channels == 3){
-baseline_colorspace = "RGB, HSV or BGR";
-if(type == 16){baseline_matType = "CV_8UC3";}
-if(type == 17){baseline_matType = "CV_8SC3";}
-if(type == 18){baseline_matType = "CV_16UC3";}
-if(type == 19){baseline_matType = "CV_16SC3";}
-if(type == 20){baseline_matType = "CV_32SC3";}
-if(type == 21){baseline_matType = "CV_32FC3";}
-if(type == 22){baseline_matType = "CV_64FC3";}
-}
-if (channels == 2){
-baseline_colorspace = "unknown"
-if(type == 8){baseline_matType = "CV_8UC2";}
-if(type == 9){baseline_matType = "CV_8SC2";}
-if(type == 10){baseline_matType = "CV_16UC2";}
-if(type == 11){baseline_matType = "CV_16SC2";}
-if(type == 12){baseline_matType = "CV_32SC2";}
-if(type == 13){baseline_matType = "CV_32FC2";}
-if(type == 14){baseline_matType = "CV_64FC2";}
-}
-if (channels == 1){
-baseline_colorspace = "GRAY"
-if(type == 0){baseline_matType = "CV_8UC1";}
-if(type == 1){baseline_matType = "CV_8SC1";}
-if(type == 2){baseline_matType = "CV_16UC1";}
-if(type == 3){baseline_matType = "CV_16SC1";}
-if(type == 4){baseline_matType = "CV_32SC1";}
-if(type == 5){baseline_matType = "CV_32FC1";}
-if(type == 6){baseline_matType = "CV_64FC1";}
-}
+  if (channels == 4){
+  baseline_colorspace = "RGBA or BGRA"
+  if(type == 24){baseline_matType = "CV_8UC4";}
+  if(type == 25){baseline_matType = "CV_8SC4";}
+  if(type == 26){baseline_matType = "CV_16UC4";}
+  if(type == 27){baseline_matType = "CV_16SC4";}
+  if(type == 28){baseline_matType = "CV_32SC4";}
+  if(type == 29){baseline_matType = "CV_32FC4";}
+  if(type == 30){baseline_matType = "CV_64FC4";}
+  }
+  if (channels == 3){
+  baseline_colorspace = "RGB, HSV or BGR";
+  if(type == 16){baseline_matType = "CV_8UC3";}
+  if(type == 17){baseline_matType = "CV_8SC3";}
+  if(type == 18){baseline_matType = "CV_16UC3";}
+  if(type == 19){baseline_matType = "CV_16SC3";}
+  if(type == 20){baseline_matType = "CV_32SC3";}
+  if(type == 21){baseline_matType = "CV_32FC3";}
+  if(type == 22){baseline_matType = "CV_64FC3";}
+  }
+  if (channels == 2){
+  baseline_colorspace = "unknown"
+  if(type == 8){baseline_matType = "CV_8UC2";}
+  if(type == 9){baseline_matType = "CV_8SC2";}
+  if(type == 10){baseline_matType = "CV_16UC2";}
+  if(type == 11){baseline_matType = "CV_16SC2";}
+  if(type == 12){baseline_matType = "CV_32SC2";}
+  if(type == 13){baseline_matType = "CV_32FC2";}
+  if(type == 14){baseline_matType = "CV_64FC2";}
+  }
+  if (channels == 1){
+  baseline_colorspace = "GRAY"
+  if(type == 0){baseline_matType = "CV_8UC1";}
+  if(type == 1){baseline_matType = "CV_8SC1";}
+  if(type == 2){baseline_matType = "CV_16UC1";}
+  if(type == 3){baseline_matType = "CV_16SC1";}
+  if(type == 4){baseline_matType = "CV_32SC1";}
+  if(type == 5){baseline_matType = "CV_32FC1";}
+  if(type == 6){baseline_matType = "CV_64FC1";}
+  }
 
-console.log("MatName :(" + name + ") ", Mat);
-console.log("   MatStats:channels=" + channels + " type:" + type + " cols:" + cols + " rows:" + rows );
-console.log("   depth:" + depth + " colorspace:" + baseline_colorspace + " type:" + baseline_matType );
+  console.log("MatName :(" + name + ") ", Mat);
+  console.log("   MatStats:channels=" + channels + " type:" + type + " cols:" + cols + " rows:" + rows );
+  console.log("   depth:" + depth + " colorspace:" + baseline_colorspace + " type:" + baseline_matType );
 
-return;
+  return;
 }
-
-// cvMatToP5Image now lives in shimage.js
-// -----------------------------------------------------------------------
-// imgproc - homography validation/cleanup, alignImages()
-// -----------------------------------------------------------------------
-//
-// The 4x4/2D matrix helpers (identityMatrix, applyTransform4x4,
-// multiplyMatrix4x4, invertMatrix4x4, determinant4x4, cofactor4x4,
-// to2dAffine, invertMatrix2D) now live in davidchatting/shimage - this file
-// still uses them (isReasonableHomography's H.length === 16 branch is
-// shaped to match them, and consumers commonly compose alignImages's
-// transform with them) but depends on shimage.js being loaded for them,
-// rather than defining them itself.
 
 /**
  * Checks if a homography transform looks reasonable.
@@ -704,14 +624,6 @@ function alignImages(imageA, imageB, options = {}) {
     return { valid: false, transform: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
 
-  // Align_img(a, b) fits b's points as the "original" plane and a's as the
-  // "target" (see its STEP 8) - i.e. it maps its *second* argument onto its
-  // first. Called here as (imageB, imageA), swapped from alignImages' own
-  // (imageA, imageB) signature, so the resulting h - and so transform below -
-  // maps imageA -> imageB directly: the direction callers actually want in
-  // practice (e.g. "where does the reference image's content land inside
-  // the image being aligned"), with no inversion needed. Align_img itself
-  // is untouched; only the order it's called with here changes.
   try {
     Align_img(imageB, imageA);
   } catch (err) {
@@ -725,11 +637,6 @@ function alignImages(imageA, imageB, options = {}) {
     return { valid: false, transform: null, inlierMatches, outlierMatches, reason: 'No homography found' };
   }
 
-  // Computed as soon as a homography exists, and returned regardless of
-  // whether isReasonableHomography accepts it below - a rejected homography
-  // (e.g. excessive perspective) is still a real, inspectable result, not
-  // nothing; callers who want to ignore it can just check .valid. Use
-  // to2dAffine(transform) for the plain 2D canvas/p5.js applyMatrix() form.
   const transform = [
     h.data64F[0], h.data64F[3], 0, h.data64F[6],
     h.data64F[1], h.data64F[4], 0, h.data64F[7],
