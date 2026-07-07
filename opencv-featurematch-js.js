@@ -477,6 +477,23 @@ function applyTransform4x4(px, py, M) {
 }
 
 /**
+ * Converts a flat 16-element row-major 4x4 matrix into the flat 6-element
+ * array [a, b, c, d, e, f] that both the HTML5 canvas API's setTransform()
+ * and p5.js's applyMatrix() (2D mode) expect, where:
+ *   | a c e |
+ *   | b d f |
+ *   | 0 0 1 |
+ * Only the matrix's 2D affine part (rotation/scale/shear/translation in the
+ * XY plane) survives - any Z or perspective terms are dropped.
+ * @param {Array} M - flat 16-element row-major 4x4 matrix
+ * @returns {Array|null} - [a, b, c, d, e, f], or null if M isn't a flat 16-element array
+ */
+function to2dAffine(M) {
+  if (!Array.isArray(M) || M.length !== 16) return null;
+  return [M[0], M[4], M[1], M[5], M[3], M[7]];
+}
+
+/**
  * Multiplies two 4x4 row-major flat matrices and returns the literal matrix
  * product A * B. applyTransform4x4 applies a matrix to a column vector
  * (M * p), so to compose "apply A to a point first, then apply B to the

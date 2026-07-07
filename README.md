@@ -9,7 +9,7 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 Everything ships as a single file, **`opencv-featurematch-js.js`**:
 
 - The core feature-matching/homography computation (`Align_img`), adapted from the tutorial above.
-- Alignment math on top: 4x4 matrix helpers, homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
+- Alignment math on top: 4x4 matrix helpers, homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), a 4x4-to-2D-affine converter for drawing with plain canvas/p5.js 2D APIs (`to2dAffine`), and the clean two-image primitive most consumers actually want:
 
 ```js
 const result = alignImagePair(imageA, imageB, options);
@@ -23,6 +23,12 @@ Before calling either of the above, `await cvLoaded()` - opencv.js's `<script on
 ```js
 await cvLoaded();
 const result = alignImagePair(imageA, imageB, options);
+```
+
+`result.transform` is a flat 16-element row-major 4x4 matrix - the right shape for `drawProjectedImage()`'s 3D/WEBGL quad warp, but not for plain 2D canvas/p5.js drawing. `to2dAffine` converts it to the 6-element `[a, b, c, d, e, f]` array that both the canvas API's `setTransform()` and p5.js's `applyMatrix()` (2D mode) expect:
+
+```js
+applyMatrix(to2dAffine(result.transform));
 ```
 
 The library is deliberately just feature matching and math - no DOM conventions (how a transform gets stored on an element, how images get downscaled/masked), no rendering, no EXIF/camera/playback, and no multi-image sequencing policy (which candidate to try, when to stop). All of that is application-specific. [davidchatting/shimage](https://github.com/davidchatting/shimage) covers the p5.js/WEBGL rendering side (converting a DOM image to a texture, drawing a warped quad); see [RugbySynth](https://github.com/davidchatting-bot/RugbySynth) for a full application built on both (EXIF-timed playback, a 3D camera fly-through, foreground/background segmentation).
