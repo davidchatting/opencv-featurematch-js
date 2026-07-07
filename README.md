@@ -8,11 +8,9 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 
 ## Example
 
-This example is written with **p5.js** and this example can be <!-- p5js-sync:homepage -->
-[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
-<!-- /p5js-sync:homepage -->.
+This example is written with **p5.js** and this example can be <!-- p5js-sync:homepage -->[run in the browser](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->.
 
-sketch.js
+### sketch.js
 <!-- p5js-sync:sketch.js -->
 ```js
 let box, box_in_scene;
@@ -68,7 +66,7 @@ The returned result object:
 - `maxPerspective` - max allowed perspective distortion (default `0.01`)
 - `precision` - decimal places to round `inlierMatches`/`outlierMatches` coordinates to (default `0`, i.e. whole pixels)
 
-index.html
+### index.html
 <!-- p5js-sync:index.html -->
 ```html
 <!DOCTYPE html>
@@ -93,11 +91,9 @@ index.html
 ```
 <!-- /p5js-sync:index.html -->
 
-### Syncing with the p5.js Editor
+## Syncing with the p5.js Editor
 
-This repository automatically synchronises with the <!-- p5js-sync:homepage -->
-[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
-<!-- /p5js-sync:homepage -->, where the example code is maintained. Using the github workflows, every repository push to `main`, triggers `build.yml` to download the sketch's files via the editor's export API, write them into [`p5js/`](p5js) in this repo, and insert the same content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
+This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main`, triggers `build.yml` to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
 
 ## License
 
