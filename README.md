@@ -59,7 +59,7 @@ The returned result object:
 - `inlierMatches` / `outlierMatches` - the underlying point correspondences, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates; `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected
 - `reason` - why an invalid result was rejected (or `'OK'`)
 
-`options` passed to `alignImages`:
+`options` assed to `alignImages`:
 - `maxRotationDeg` - max allowed rotation in degrees (default: unbounded)
 - `maxScale` - max allowed scale factor, n - the homography can be up to nx bigger or nx smaller (default `3`)
 - `maxShear` - max allowed shear (default `0.5`)
@@ -91,11 +91,15 @@ The returned result object:
 ```
 <!-- /p5js-sync:index.html -->
 
-This library depends on both [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html) and [shimage.js](https://github.com/davidchatting/shimage) being loaded too - script tag order between the two doesn't matter, since nothing calls into either until `featurematchReady()` resolves. `opencv-featurematch-js.js`, and a minified build (`opencv-featurematch-js.min.js`, generated automatically by CI on every push to `main`), are both published via [jsDelivr's GitHub CDN](https://www.jsdelivr.com/github) - pin to a version tag (e.g. `@0.5.1` above) rather than `@main`, so this repo's own ongoing changes can't silently affect existing consumers.
+A minimised version of *opencv-featurematch-js*, built automatically via [build.yml](.github/workflows/build.yml), is distributed via CDN:
+```
+https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@latest/opencv-featurematch-js.min.js
+```
+*opencv-featurematch-js* depends on both *opencv.js* and *shimage.js*, the example requires *p5.js*.
 
 ## Syncing with the p5.js Editor
 
-This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main` branch, triggers [build.yml](.github/workflows/build.yml) to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the [package.json](package.json) `homepage` field.
+This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, [build.yml](.github/workflows/build.yml) automatically downloads the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the [package.json](package.json) `homepage` field.
 
 ## License
 
