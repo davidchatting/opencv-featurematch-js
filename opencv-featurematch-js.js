@@ -496,10 +496,11 @@ return;
  * Returns { valid: boolean, reason: string, rotation: number, scale: number, shear: number }
  *
  * A "reasonable" homography for image alignment should have:
- * - Minimal rotation (< maxRotationDeg)
  * - Scale close to 1 (within scaleRange)
  * - Low shear
  * - Low perspective distortion (bottom row close to [0, 0, 1])
+ * - Rotation is unbounded by default (any angle passes) - pass
+ *   options.maxRotationDeg to actually constrain it
  *
  * @param {Array} H - flat 9-element row-major 3x3 homography, or flat 16-element column-major 4x4
  * @param {Object} options - optional thresholds
@@ -507,7 +508,7 @@ return;
  */
 function isReasonableHomography(H, options = {}) {
   const {
-    maxRotationDeg = 15,      // max allowed rotation in degrees
+    maxRotationDeg = Infinity, // max allowed rotation in degrees - unbounded unless specified
     maxScale = 3,             // max allowed scale, n - homography can be up to nx bigger or nx smaller
     maxShear = 0.5,           // max allowed shear
     maxPerspective = 0.01     // max allowed perspective distortion
