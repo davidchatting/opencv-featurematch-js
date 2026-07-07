@@ -749,6 +749,42 @@ function stripShear(transform) {
   ];
 }
 
+// Splits Align_img's matches (good_matches_global, points1/points2) into
+// inlier/outlier point pairs, by checking each match's membership in
+// good_inlier_matches (same technique drawMatchesOverlay already uses).
+// points1/points2 hold imageB's/imageA's coordinates respectively (Align_img
+// internally treats its first argument as the reference and its second as
+// the image being aligned) - re-labelled here to match alignImagePair's own
+// (imageA, imageB) parameter names.
+function getMatchPoints() {
+  const inlierMatches = [];
+  const outlierMatches = [];
+  if (!good_matches_global) return { inlierMatches, outlierMatches };
+
+  for (let i = 0; i < good_matches_global.size(); i++) {
+    const m = good_matches_global.get(i);
+
+    let isInlier = false;
+    if (good_inlier_matches && good_inlier_matches.size) {
+      for (let j = 0; j < good_inlier_matches.size(); j++) {
+        const im = good_inlier_matches.get(j);
+        if (im.queryIdx === m.queryIdx && im.trainIdx === m.trainIdx) {
+          isInlier = true;
+          break;
+        }
+      }
+    }
+
+    const point = {
+      imageA: [points2[i * 2], points2[i * 2 + 1]],
+      imageB: [points1[i * 2], points1[i * 2 + 1]]
+    };
+    (isInlier ? inlierMatches : outlierMatches).push(point);
+  }
+
+  return { inlierMatches, outlierMatches };
+}
+
 /**
  * Aligns two images and returns the result directly, instead of forcing the
  * caller to read Align_img's side-effect globals (h, good_inlier_matches).
@@ -761,28 +797,29 @@ function stripShear(transform) {
  * @param {HTMLImageElement} imageA - reference image
  * @param {HTMLImageElement} imageB - image to align onto imageA
  * @param {Object} options - passed through to isReasonableHomography
- * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, inlierMatches: Array, outlierMatches: Array, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, transform2D: null, inliers: 0, reason: err.message };
+    return { valid: false, transform: null, transform2D: null, inliers: 0, inlierMatches: [], outlierMatches: [], reason: err.message };
   }
 
   const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
+  const { inlierMatches, outlierMatches } = getMatchPoints();
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, transform2D: null, inliers, reason: 'No homography found' };
+    return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: 'No homography found' };
   }
 
   const check = isReasonableHomography(Array.from(h.data64F), options);
   if (!check.valid) {
-    return { valid: false, transform: null, transform2D: null, inliers, reason: check.reason };
+    return { valid: false, transform: null, transform2D: null, inliers, inlierMatches, outlierMatches, reason: check.reason };
   }
 
   const transform = [
@@ -799,5 +836,5 @@ function alignImagePair(imageA, imageB, options = {}) {
   // maxPerspective threshold already keeps those small for a valid result.
   const transform2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
 
-  return { valid: true, transform, transform2D, inliers, reason: check.reason };
+  return { valid: true, transform, transform2D, inliers, inlierMatches, outlierMatches, reason: check.reason };
 }
