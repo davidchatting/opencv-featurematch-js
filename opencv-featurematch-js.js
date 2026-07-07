@@ -529,7 +529,7 @@ function multiplyMatrix4x4(A, B) {
 
 /**
  * Inverts a flat 6-element [a, b, c, d, e, f] 2D affine matrix - the same
- * shape alignImagePair's transform2D uses, and the one both the canvas API's
+ * shape to2dAffine() produces, and the one both the canvas API's
  * setTransform() and p5.js's applyMatrix() (2D mode) expect:
  *   | a c e |
  *   | b d f |
@@ -809,31 +809,31 @@ function getMatchPoints(precision = 0) {
  * @param {Object} options - passed through to isReasonableHomography;
  *   also accepts options.precision (default 0) - decimal places to round
  *   inlierMatches/outlierMatches coordinates to
- * @returns {{valid: boolean, transform: (Array|null), transform2D: (Array|null), inliers: number, inlierMatches: Array, outlierMatches: Array, reason: string}}
+ * @returns {{valid: boolean, transform: (Array|null), inlierMatches: Array, outlierMatches: Array, reason: string}}
  */
 function alignImagePair(imageA, imageB, options = {}) {
   if (!imageA || !imageB) {
-    return { valid: false, transform: null, transform2D: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
+    return { valid: false, transform: null, inlierMatches: [], outlierMatches: [], reason: 'imageA or imageB is null or undefined' };
   }
 
   try {
     Align_img(imageA, imageB);
   } catch (err) {
-    return { valid: false, transform: null, transform2D: null, inlierMatches: [], outlierMatches: [], reason: err.message };
+    return { valid: false, transform: null, inlierMatches: [], outlierMatches: [], reason: err.message };
   }
 
   const { precision = 0 } = options;
-  const inliers = (good_inlier_matches && good_inlier_matches.size) ? good_inlier_matches.size() : 0;
   const { inlierMatches, outlierMatches } = getMatchPoints(precision);
 
   if (!h || h.empty() || !h.data64F) {
-    return { valid: false, transform: null, transform2D: null, inlierMatches, outlierMatches, reason: 'No homography found' };
+    return { valid: false, transform: null, inlierMatches, outlierMatches, reason: 'No homography found' };
   }
 
   // Computed as soon as a homography exists, and returned regardless of
   // whether isReasonableHomography accepts it below - a rejected homography
   // (e.g. excessive perspective) is still a real, inspectable result, not
-  // nothing; callers who want to ignore it can just check .valid.
+  // nothing; callers who want to ignore it can just check .valid. Use
+  // to2dAffine(transform) for the plain 2D canvas/p5.js applyMatrix() form.
   const transform = [
     h.data64F[0], h.data64F[3], 0, h.data64F[6],
     h.data64F[1], h.data64F[4], 0, h.data64F[7],
@@ -841,12 +841,6 @@ function alignImagePair(imageA, imageB, options = {}) {
     h.data64F[2], h.data64F[5], 0, h.data64F[8]
   ];
 
-  // The affine part of the homography as [a, b, c, d, e, f] - the shape both
-  // the canvas API's setTransform() and p5.js's applyMatrix() (2D mode)
-  // expect. Perspective terms (h.data64F[6], [7]) are dropped, same as
-  // to2dAffine(transform) would give.
-  const transform2D = [h.data64F[0], h.data64F[3], h.data64F[1], h.data64F[4], h.data64F[2], h.data64F[5]];
-
   const check = isReasonableHomography(Array.from(h.data64F), options);
-  return { valid: check.valid, transform, transform2D, inlierMatches, outlierMatches, reason: check.reason };
+  return { valid: check.valid, transform, inlierMatches, outlierMatches, reason: check.reason };
 }
