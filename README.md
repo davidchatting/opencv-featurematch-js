@@ -22,7 +22,7 @@ const result = alignImagePair(imageA, imageB, options);
 
 `inlierMatches` and `outlierMatches` are the underlying point correspondences the homography was computed from, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates - `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected (`inlierMatches.length` is the inlier count). Useful for visualizing match quality (e.g. drawing lines between the two images) rather than just trusting a summary number. Populated whenever `Align_img` finds any matches at all, even on an otherwise-`invalid` result (e.g. one rejected for excessive perspective). Coordinates are rounded to whole pixels by default - pass `{ precision: 2 }` (decimal places) to `alignImagePair` for finer-grained values.
 
-Before calling either of the above, `await featurematchReady()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`. `featurematchReady()` waits for that *and* confirms `shimage.js` has actually loaded (`cvLoaded()` alone only covers the OpenCV.js half):
+Before calling either of the above, `await featurematchReady()` - opencv.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`. `featurematchReady()` waits for both `cvReady()` (OpenCV.js) and `shimageReady()` (`shimage.js`) - call it instead of either individually unless you have a specific reason to wait on just one:
 
 ```js
 await featurematchReady();
