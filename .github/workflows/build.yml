@@ -1,13 +1,8 @@
 name: Build
 
 on:
-  # Not a push trigger: the p5.js editor demo sketch is edited externally
-  # (editor.p5js.org), so no commit to this repo ever reflects those
-  # changes on its own. A release is a deliberate "publish this" moment
-  # under our own control, so it's a better sync point than trying to
-  # guess from repo push activity.
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
