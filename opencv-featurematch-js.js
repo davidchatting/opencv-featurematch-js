@@ -43,7 +43,6 @@ function featurematchReady() {
 }
 
 var canvas;
-var inputImageA = null, inputImageB = null;
 var points1 = [];
 var points2 = [];
 var good_inlier_matches;
@@ -73,23 +72,7 @@ function Align_img(image_element_a, image_element_b) {
   getMatStats(im2, "original reference image");
   //im1 is the image we are trying to line up correctly
   
-  let resultSize = im2.size();
-  // inputImageA/inputImageB are only used by a consuming sketch's optional
-  // debug preview (e.g. drawMatchesOverlay) - createImage is a p5.js global,
-  // so this is skipped entirely when p5.js isn't loaded (a plain-DOM consumer
-  // calling this for its transform/inlier result has no use for them anyway).
-  if (typeof createImage === 'function') {
-    inputImageB = createImage(resultSize.width, resultSize.height);
-    cvMatToP5Image(im2, inputImageB);
-  }
-
   let im1 = cv.imread(image_element_b);
-
-  if (typeof createImage === 'function') {
-    resultSize = im1.size();
-    inputImageA = createImage(resultSize.width, resultSize.height);
-    cvMatToP5Image(im1, inputImageA);
-  }
 
   getMatStats(im1, "original image to line up");
 
@@ -564,7 +547,7 @@ function roundTo(value, precision) {
 
 // Splits Align_img's matches (good_matches_global, points1/points2) into
 // inlier/outlier point pairs, by checking each match's membership in
-// good_inlier_matches (same technique drawMatchesOverlay already uses).
+// good_inlier_matches.
 // alignImages calls Align_img(imageB, imageA) (swapped from its own
 // parameter order - see alignImages), so points1/points2 hold imageA's/
 // imageB's coordinates respectively here. Each match is a raw
