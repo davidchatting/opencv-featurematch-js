@@ -23,7 +23,7 @@ function draw() {
     translate(box.width, 0);
     image(box_in_scene, 0, 0);
     if (result && result.valid) {
-      applyMatrix(invertMatrix4x4(result.transform));
+      applyMatrix(...result.transform);
       noFill();
       strokeWeight(3);
       stroke('green');
