@@ -502,6 +502,28 @@ function multiplyMatrix4x4(A, B) {
   return result;
 }
 
+/**
+ * Inverts a flat 9-element row-major 3x3 matrix (e.g. alignImagePair's
+ * transform2D), via the closed-form adjugate/determinant formula.
+ * @param {Array} A - flat 9-element row-major 3x3 matrix
+ * @returns {Array|null} - flat 9-element row-major 3x3 inverse, or null if A
+ *   isn't a flat 9-element array or isn't invertible (det === 0)
+ */
+function invertMatrix3x3(A) {
+  if (!Array.isArray(A) || A.length !== 9) return null;
+
+  const [a0, a1, a2, a3, a4, a5, a6, a7, a8] = A;
+  const det = a0 * (a4 * a8 - a5 * a7) - a1 * (a3 * a8 - a5 * a6) + a2 * (a3 * a7 - a4 * a6);
+  if (det === 0) return null;
+
+  const invDet = 1 / det;
+  return [
+    (a4 * a8 - a5 * a7) * invDet, (a2 * a7 - a1 * a8) * invDet, (a1 * a5 - a2 * a4) * invDet,
+    (a5 * a6 - a3 * a8) * invDet, (a0 * a8 - a2 * a6) * invDet, (a2 * a3 - a0 * a5) * invDet,
+    (a3 * a7 - a4 * a6) * invDet, (a1 * a6 - a0 * a7) * invDet, (a0 * a4 - a1 * a3) * invDet
+  ];
+}
+
 function invertMatrix4x4(A) {
   const inv = new Array(16);
   const det = determinant4x4(A);

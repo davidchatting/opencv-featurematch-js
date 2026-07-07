@@ -9,7 +9,7 @@ Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.
 Everything ships as a single file, **`opencv-featurematch-js.js`**:
 
 - The core feature-matching/homography computation (`Align_img`), adapted from the tutorial above.
-- Alignment math on top: 4x4 matrix helpers, homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
+- Alignment math on top: 3x3/4x4 matrix helpers (including `invertMatrix3x3`/`invertMatrix4x4`), homography validation (`isReasonableHomography`) and shear cleanup (`stripShear`), and the clean two-image primitive most consumers actually want:
 
 ```js
 const result = alignImagePair(imageA, imageB, options);
