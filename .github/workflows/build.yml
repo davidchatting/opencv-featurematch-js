@@ -66,6 +66,30 @@ jobs:
               # is inserted literally rather than being reinterpreted.
               return pattern.sub(lambda m: replacement, readme)
 
+          def sync_url(readme, marker, url, default_text='**Open in the p5.js editor**'):
+              # Like sync(), but only ever replaces the URL inside the
+              # markdown link's (...) - whatever link text already sits in
+              # [...] between the markers (custom or otherwise) is left
+              # alone. Only falls back to reconstructing a full default link
+              # when there's no existing link to preserve the text of, e.g.
+              # the very first run against an empty block.
+              block_pattern = re.compile(
+                  r'<!-- p5js-sync:' + re.escape(marker) + r' -->.*?<!-- /p5js-sync:' + re.escape(marker) + r' -->',
+                  re.DOTALL
+              )
+              block_match = block_pattern.search(readme)
+              if not block_match:
+                  return readme
+
+              block = block_match.group(0)
+              link_pattern = re.compile(r'\]\(https?://[^)\s]*\)')
+              if link_pattern.search(block):
+                  new_block = link_pattern.sub(lambda m: f']({url})', block, count=1)
+              else:
+                  new_block = f'<!-- p5js-sync:{marker} -->\n[{default_text}]({url})\n<!-- /p5js-sync:{marker} -->'
+
+              return readme[:block_match.start()] + new_block + readme[block_match.end():]
+
           def file_content(path):
               with open(path) as f:
                   return f.read().rstrip('\n')
@@ -78,7 +102,7 @@ jobs:
 
           with open('package.json') as f:
               homepage = json.load(f)['homepage']
-          readme = sync(readme, 'homepage', f'[**Open in the p5.js editor**]({homepage})')
+          readme = sync_url(readme, 'homepage', homepage)
 
           with open('README.md', 'w') as f:
               f.write(readme)
