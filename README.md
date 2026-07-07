@@ -6,13 +6,9 @@ Useful anywhere two overlapping images need to be lined up automatically - panor
 
 Originally adapted from Scott Suhy's [Image Alignment (Feature Based) in OpenCV.js](https://web.archive.org/web/20210201184709/https://scottsuhy.com/2021/02/01/image-alignment-feature-based-in-opencv-js-javascript/) tutorial.
 
-## Demo
+## Example
 
-This example is written with [p5.js](https://p5js.org/).
-
-<!-- p5js-sync:homepage -->
-[**Open in the p5.js editor**](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)
-<!-- /p5js-sync:homepage -->
+This example is written with **p5.js** and this example can be <!-- p5js-sync:homepage -->[run directly in the browser](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->.
 
 sketch.js
 <!-- p5js-sync:sketch.js -->
@@ -53,28 +49,15 @@ function draw() {
 ```
 <!-- /p5js-sync:sketch.js -->
 
-### Using the library
+`await featurematchReady()` waits until the feature-matching is ready, this also requires both the OpenCv and Shimage libraries to be loaded succesfully.
 
-`await featurematchReady()` before calling anything else. OpenCV.js's `<script onload>` fires once its JS wrapper has loaded, not once its WASM runtime has actually finished initializing, and calling into this library before that finishes throws `"undefined is not a constructor"`. It resolves once both `cvReady()` (OpenCV.js's WASM runtime) and `shimageReady()` ([shimage.js](https://github.com/davidchatting/shimage)'s matrix/image helpers) are ready.
-
-`alignImages(imageA, imageB, options)` runs the alignment: it detects KAZE features in both images, matches them with a kNN matcher, keeps the confident matches, and fits a homography between them with `cv.findHomography` (RANSAC) - then checks the fit against the thresholds below before returning. `transform` maps `imageA`'s own coordinate space into `imageB`'s directly - e.g. `applyMatrix(result.transform)` (WEBGL) or `applyMatrix(to2dAffine(result.transform))` (2D) places `imageA`'s content where it appears within `imageB`, no inversion needed.
-
-`options`:
-- `maxRotationDeg` - max allowed rotation in degrees (default: unbounded)
-- `maxScale` - max allowed scale factor, n - the homography can be up to nx bigger or nx smaller (default `3`)
-- `maxShear` - max allowed shear (default `0.5`)
-- `maxPerspective` - max allowed perspective distortion (default `0.01`)
-- `precision` - decimal places to round `inlierMatches`/`outlierMatches` coordinates to (default `0`, i.e. whole pixels)
+`alignImages(imageA, imageB, options)` computes the alignment of the images, a 3D transform that will map `imageA`'s own coordinate space into `imageB`'s directly. Internally, the OpenCV pipeline detects KAZE features in both images, matches them with a kNN matcher, keeps the confident matches, and fits a homography between them with `cv.findHomography` (RANSAC).
 
 The returned result object:
 - `valid` - whether the fitted homography passed the thresholds above
 - `transform` - a flat 16-element **column-major** 4x4 matrix (the same layout WebGL/OpenGL use natively). Populated as soon as any homography is found at all, even on an otherwise-invalid result - only `null` if no homography was found
 - `inlierMatches` / `outlierMatches` - the underlying point correspondences, each an array of `[[xA, yA], [xB, yB]]` pairs in that image's own pixel coordinates; `inlierMatches` are the ones RANSAC kept, `outlierMatches` the ones it rejected
 - `reason` - why an invalid result was rejected (or `'OK'`)
-
-### Keeping the demo in sync
-
-The sketch above lives primarily on the [p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR) - its URL is kept in `package.json`'s `homepage` field, the single source of truth for the sketch ID. On every push to `main`, `build.yml` downloads that sketch's files via the editor's export API, writes them into [`p5js/`](p5js) in this repo, and syncs the same content into the code blocks and link above - so editing the sketch on the editor and pushing anything to `main` keeps this README, and `p5js/`, up to date automatically.
 
 index.html
 <!-- p5js-sync:index.html -->
@@ -100,6 +83,10 @@ index.html
 </html>
 ```
 <!-- /p5js-sync:index.html -->
+
+### Keeping the demo in sync
+
+This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code is maintained. Using the github workflows, every repository push to `main`, triggers `build.yml` to download the sketch's files via the editor's export API, write them into [`p5js/`](p5js) in this repo, and insert the same content into the code blocks in this README. The reference for the p5.js sketch is held in the `package.json` `homepage` field.
 
 ## License
 
