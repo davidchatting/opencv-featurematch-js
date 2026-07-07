@@ -91,6 +91,8 @@ The returned result object:
 ```
 <!-- /p5js-sync:index.html -->
 
+This library depends on both [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html) and [shimage.js](https://github.com/davidchatting/shimage) being loaded too - script tag order between the two doesn't matter, since nothing calls into either until `featurematchReady()` resolves. `opencv-featurematch-js.js`, and a minified build (`opencv-featurematch-js.min.js`, generated automatically by CI on every push to `main`), are both published via [jsDelivr's GitHub CDN](https://www.jsdelivr.com/github) - pin to a version tag (e.g. `@0.5.1` above) rather than `@main`, so this repo's own ongoing changes can't silently affect existing consumers.
+
 ## Syncing with the p5.js Editor
 
 This repository automatically synchronises with the <!-- p5js-sync:homepage -->[p5.js editor](https://editor.p5js.org/davidchatting/sketches/YHF4dsSbR)<!-- /p5js-sync:homepage -->, where the example code in the [`p5js/`](p5js) folder is maintained. Using the github workflows, every repository push to `main` branch, triggers [build.yml](.github/workflows/build.yml) to download the sketch's files via the editor's export API, commit them into the repo, and insert the content into the code blocks in this README. The reference for the p5.js sketch is held in the [package.json](package.json) `homepage` field.
