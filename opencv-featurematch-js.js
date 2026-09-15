@@ -1,18 +1,40 @@
 /*!
  * opencv-featurematch-js.js - feature-based image alignment for OpenCV.js
  *
- * Dependencies: davidchatting/shimage + opencv/4.5.1
+ * Dependencies: davidchatting/shimage + @techstark/opencv-js@4.11.0-release.1
  * MIT License - Copyright (c) 2026 David Chatting
  */
 
 function cvReady() {
   return new Promise(resolve => {
-    if (typeof cv !== 'undefined' && cv.Mat) {
-      resolve();
-      return;
+    function isThenable(v) {
+      return v && typeof v.then === 'function';
     }
+    // Two known shapes for the cv global, depending on how opencv.js was
+    // built: the classic Module object (set synchronously, ready once
+    // onRuntimeInitialized fires), or a Promise that resolves to that
+    // object (e.g. @techstark/opencv-js's UMD build) - the latter needs
+    // the global replaced with its resolved value so every other caller
+    // (including shimage.js) sees the real module too.
+    function tryResolve() {
+      if (typeof cv === 'undefined') return false;
+      if (cv.Mat) {
+        resolve();
+        return true;
+      }
+      if (isThenable(cv)) {
+        cv.then(realCv => {
+          cv = realCv;
+          resolve();
+        });
+        return true;
+      }
+      return false;
+    }
+    if (tryResolve()) return;
     // cv may not exist as a global at all yet (opencv.js script tag still
-    // loading/executing) - only attach onRuntimeInitialized once it does.
+    // loading/executing), or exist as the not-yet-initialized classic
+    // Module object - only attach onRuntimeInitialized in the latter case.
     if (typeof cv !== 'undefined') {
       cv['onRuntimeInitialized'] = resolve;
     }
@@ -20,8 +42,8 @@ function cvReady() {
     // onRuntimeInitialized already fired in the race between the check
     // above and this assignment.
     (function poll() {
-      if (typeof cv !== 'undefined' && cv.Mat) resolve();
-      else setTimeout(poll, 50);
+      if (tryResolve()) return;
+      setTimeout(poll, 50);
     })();
   });
 }
