@@ -79,7 +79,7 @@ The returned result object:
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/addons/p5.sound.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidchatting/shimage@latest/shimage.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/davidchatting/cdn/opencv/4.5.1/opencv.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.11.0-release.1/dist/opencv.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/davidchatting/opencv-featurematch-js@latest/opencv-featurematch-js.min.js"></script>
     
     <link rel="stylesheet" type="text/css" href="style.css">
